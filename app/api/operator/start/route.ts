@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
 import { agentIdFor, conversationTokenFor, signedUrlFor } from "@/lib/agents";
-import { FAST_PROMPT, FAST_TURN } from "@/lib/voice-config";
+import { FAST_TURN } from "@/lib/voice-config";
 import { loadKb, selectPractices } from "@/lib/kb";
-import { operatorFirstMessage, operatorPrompt } from "@/lib/operator";
+import { operatorFirstMessage, operatorPromptConfig } from "@/lib/operator";
 import clinic from "@/lib/clinic.json";
 
 /**
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
           agent: {
             first_message: operatorFirstMessage(),
             language: "ru",
-            prompt: { prompt: operatorPrompt({ memo: clinic.memo, practices }), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash", ...FAST_PROMPT },
+            prompt: operatorPromptConfig({ memo: clinic.memo, practices }),
           },
         },
       }),

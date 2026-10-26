@@ -13,11 +13,14 @@ export async function POST(req: Request) {
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   try {
-    const reply = await gemmaText({
+    const raw = await gemmaText({
       system: scenario.prompt,
       contents: parsed.data.map((t) => ({ role: t.role === "agent" ? ("model" as const) : ("user" as const), text: t.text })),
     });
-    return NextResponse.json({ reply });
+    // In voice the patient hangs up with the end_call tool; text mode has no tools, so the model writes the name instead.
+    const ended = /\bend_call\b/.test(raw);
+    const reply = raw.replace(/\s*\bend_call\b\s*/g, " ").trim();
+    return NextResponse.json({ reply, ended });
   } catch (e) {
     console.error("[chat]", e);
     return NextResponse.json({ error: e instanceof Error ? e.message : "Не удалось получить ответ" }, { status: 502 });

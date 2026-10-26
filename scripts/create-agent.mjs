@@ -1,7 +1,8 @@
 // Setup: creates or updates one ElevenLabs agent per patient scenario; ids are stored in .agents.json.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { FAST_PROMPT, FAST_TURN } from "../lib/voice-config.ts";
-import { OPERATOR_VOICE_ID, operatorFirstMessage, operatorPrompt } from "../lib/operator.ts";
+import { FAST_PROMPT, FAST_TURN, OPERATOR_TTS, PATIENT_LLM_OVERRIDES, PATIENT_TTS_OVERRIDES } from "../lib/voice-config.ts";
+import { OPERATOR_VOICE_ID, operatorFirstMessage, operatorPromptConfig } from "../lib/operator.ts";
+import { END_CALL_TOOL, patientPrompt } from "../lib/patient-behavior.ts";
 
 const apiKey = process.env.ELEVENLABS_API_KEY;
 if (!apiKey) {
@@ -28,9 +29,16 @@ const jobs = pub.map((s) => {
       agent: {
         first_message: s.firstMessage,
         language: "ru",
-        prompt: { prompt: p.prompt.replace("{{SITE_FACTS}}", clinic.promptFacts), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash", ...FAST_PROMPT },
+        prompt: {
+          prompt: patientPrompt(p.prompt, clinic.promptFacts),
+          llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash",
+          ...FAST_PROMPT,
+          ...PATIENT_LLM_OVERRIDES[s.id],
+          // Lets the patient hang up on a rude or dishonest operator, like a real person would.
+          built_in_tools: { end_call: END_CALL_TOOL },
+        },
       },
-      tts: { voice_id: p.voiceId, model_id: "eleven_flash_v2_5" },
+      tts: { voice_id: p.voiceId, model_id: "eleven_flash_v2_5", ...PATIENT_TTS_OVERRIDES[s.id] },
     },
   };
 });
@@ -45,9 +53,9 @@ jobs.push({
     agent: {
       first_message: operatorFirstMessage(),
       language: "ru",
-      prompt: { prompt: operatorPrompt({ memo: clinic.memo }), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash", ...FAST_PROMPT },
+      prompt: operatorPromptConfig({ memo: clinic.memo }),
     },
-    tts: { voice_id: OPERATOR_VOICE_ID, model_id: "eleven_flash_v2_5" },
+    tts: { voice_id: OPERATOR_VOICE_ID, ...OPERATOR_TTS },
   },
 });
 

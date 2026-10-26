@@ -20,9 +20,14 @@ export function MicButton({ on, onToggle }: { on: boolean; onToggle: () => void 
 }
 
 // Sticky bottom bar for call controls; blur is fine here because the bar itself is fixed in place.
-export function CallBar({ children }: { children: React.ReactNode }) {
+// `inset` keeps the bar inside its column on desktop (used when a sidebar sits next to the dialog).
+export function CallBar({ children, inset }: { children: React.ReactNode; inset?: boolean }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-4 flex flex-col gap-3 bg-ink-950/85 px-4 pt-3 pb-4 shadow-[0_-1px_0_rgb(255_255_255/0.06)] backdrop-blur-xl lg:-mx-6 lg:px-6">
+    <div
+      className={`sticky bottom-0 z-10 -mx-4 mt-4 flex flex-col gap-3 bg-ink-950/85 px-4 pt-3 pb-4 shadow-[0_-1px_0_rgb(255_255_255/0.06)] backdrop-blur-xl ${
+        inset ? "lg:mx-0 lg:px-0" : "lg:-mx-6 lg:px-6"
+      }`}
+    >
       {children}
     </div>
   );

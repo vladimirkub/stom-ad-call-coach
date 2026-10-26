@@ -167,3 +167,11 @@ export function Book({ className }: Props) {
     </svg>
   );
 }
+
+export function ListCheck({ className }: Props) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M11 6h9M11 12h9M11 18h9M3.5 6l1.5 1.5L8 4.5M3.5 12l1.5 1.5L8 10.5M3.5 18l1.5 1.5L8 16.5" />
+    </svg>
+  );
+}

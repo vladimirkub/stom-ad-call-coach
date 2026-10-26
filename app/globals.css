@@ -110,6 +110,17 @@ body::after {
   .rise, .ring-pulse { animation: none; }
 }
 
+/* A checklist box popping in when its criterion gets ticked during a call. */
+@keyframes check-pop {
+  0% { transform: scale(0.4); box-shadow: 0 0 0 0 oklch(0.84 0.12 168 / 0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: none; box-shadow: 0 0 0 8px oklch(0.84 0.12 168 / 0); }
+}
+.check-pop { animation: check-pop 0.6s var(--ease-spring) both; }
+@media (prefers-reduced-motion: reduce) {
+  .check-pop { animation: none; }
+}
+
 /* Decorative voice waveform on the virtual-operator card. */
 @keyframes wave {
   0%, 100% { transform: scaleY(0.2); }

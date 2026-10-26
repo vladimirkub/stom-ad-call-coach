@@ -68,16 +68,16 @@ export function extractJson(raw: string): unknown {
   return JSON.parse(body.slice(start, end + 1));
 }
 
-export async function gemmaJson<T>(opts: { system: string; prompt: string; schema: ZodType<T> }): Promise<T> {
+export async function gemmaJson<T>(opts: { system: string; prompt: string; schema: ZodType<T>; thinking?: "minimal" | "default"; maxOutputTokens?: number }): Promise<T> {
   let lastError = "";
   for (let attempt = 0; attempt < 3; attempt++) {
     const prompt = attempt === 0 ? opts.prompt : `${opts.prompt}\n\nYour previous answer was invalid (${lastError}). Reply with ONLY the JSON object.`;
     const raw = await gemmaText({
       system: opts.system,
       contents: [{ role: "user", text: prompt }],
-      maxOutputTokens: 16384,
+      maxOutputTokens: opts.maxOutputTokens ?? 16384,
       // Thinking stays on by default: turning it off was ~15% faster but noticeably less accurate in evaluations.
-      thinking: process.env.GEMMA_JSON_THINKING === "off" ? "minimal" : "default",
+      thinking: opts.thinking ?? (process.env.GEMMA_JSON_THINKING === "off" ? "minimal" : "default"),
     });
     try {
       return opts.schema.parse(extractJson(raw));

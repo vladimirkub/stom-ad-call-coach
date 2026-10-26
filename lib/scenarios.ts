@@ -2,6 +2,7 @@
 import pub from "./scenarios-public.json";
 import priv from "./scenarios-private.json";
 import clinic from "./clinic.json";
+import { patientPrompt } from "./patient-behavior";
 
 type Private = { voiceId: string; hiddenObjection: string; showUpRisk: string; prompt: string };
 
@@ -11,5 +12,5 @@ export function getScenario(id: unknown) {
   const open = pub.find((s) => s.id === id);
   const secret = (priv as Record<string, Private>)[String(id)];
   if (!open || !secret) return null;
-  return { ...open, ...secret, prompt: secret.prompt.replace("{{SITE_FACTS}}", clinic.promptFacts) };
+  return { ...open, ...secret, prompt: patientPrompt(secret.prompt, clinic.promptFacts) };
 }

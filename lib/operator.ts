@@ -1,6 +1,7 @@
 // Instructions for the "ideal operator" voice agent. Pure functions (no JSON imports) so the setup script can use them too.
 // The patient is a live person improvising: the operator knows nothing about them except that they left a request.
 import type { KbEntry } from "./kb.ts";
+import { FAST_PROMPT, OPERATOR_END_CALL_TOOL, OPERATOR_LLM } from "./voice-config.ts";
 
 export function practicesBlock(p: { dos: KbEntry[]; avoids: KbEntry[] }): string {
   if (!p.dos.length && !p.avoids.length) return "";
@@ -69,7 +70,12 @@ ${o.memo.map((m) => `- ${m}`).join("\n")}
 - Просит медицинский совет или описывает острую боль, отёк, температуру: не ставь диагноз и не советуй лечение; скажи, что это вопрос к врачу, и предложи ближайший приём. При сильной острой боли или отёке посоветуй не откладывать обращение к врачу.
 - Грубит или раздражён: сохраняй спокойствие, не оправдывайся, признай эмоции и вернись к делу или вежливо закончи.
 - Уходит от темы: коротко поддержи и мягко вернись к цели звонка.
-Не прощайся, пока не пройдены пункты 5 и 6 либо человек твёрдо не отказался, либо вы не договорились о конкретном времени следующего контакта.
+Не прощайся, пока не пройдены пункты 5 и 6 либо человек твёрдо не отказался, либо вы не договорились о конкретном времени следующего контакта. Когда вы попрощались, сразу вызови инструмент end_call, чтобы положить трубку.
 
 ${practicesBlock(o.practices ?? { dos: [], avoids: [] })}`.trim();
+}
+
+/** The agent's prompt block for the operator: instructions, model and the hang-up tool. Used at setup and before every call. */
+export function operatorPromptConfig(o: Parameters<typeof operatorPrompt>[0]) {
+  return { prompt: operatorPrompt(o), ...FAST_PROMPT, ...OPERATOR_LLM, built_in_tools: { end_call: OPERATOR_END_CALL_TOOL } };
 }

@@ -39,7 +39,9 @@ function Call() {
 
   const conversation = useConversation({
     onMessage: ({ role, message }) => {
-      if (message?.trim()) setLines((l) => [...l, { who: role === "agent" ? "operator" : "patient", text: message.trim() }]);
+      // The expressive voice may carry audio tags like "[warmly]": they shape the voice, not the transcript.
+      const text = (role === "agent" ? message?.replace(/\[[^\]\n]{1,30}\]\s*/g, "") : message)?.trim();
+      if (text) setLines((l) => [...l, { who: role === "agent" ? "operator" : "patient", text }]);
     },
     onError: (message) => setError(`Ошибка голоса: ${message}`),
     onDisconnect: (details) => {
@@ -96,7 +98,8 @@ function Call() {
     setError(null);
     setFinishing(true);
     try {
-      await conversation.endSession();
+      // The operator may have already hung up; ending a session that is gone throws.
+      if (conversation.status === "connected") await conversation.endSession();
       // The evaluator expects the operator as "user" and the patient as "agent".
       const transcript: Turn[] = lines.map((l) => ({ role: l.who === "operator" ? "user" : "agent", text: l.text }));
       const res = await fetch("/api/evaluate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scenarioId: "real", transcript }) });
@@ -111,6 +114,8 @@ function Call() {
   }
 
   const micOn = !conversation.isMuted;
+  // After a hang-up (either side) the mic is gone: only "get the breakdown" remains.
+  const voiceUp = conversation.status === "connected";
 
   return (
     <Shell>
@@ -165,12 +170,20 @@ function Call() {
       {live && (
         <CallBar>
           <div className="flex items-center gap-3">
-            <MicButton on={micOn} onToggle={() => conversation.setMuted(micOn)} />
-            <Status live={conversation.isSpeaking || micOn}>
-              {conversation.isSpeaking ? "Оператор говорит…" : micOn ? "Микрофон включён: отвечайте" : "Микрофон выключен: нажмите, чтобы говорить"}
+            {voiceUp && <MicButton on={micOn} onToggle={() => conversation.setMuted(micOn)} />}
+            <Status live={voiceUp && (conversation.isSpeaking || micOn)}>
+              {!voiceUp
+                ? finishing
+                  ? "Звонок завершён, разбираем…"
+                  : "Звонок завершён. Получите разбор разговора."
+                : conversation.isSpeaking
+                  ? "Оператор говорит…"
+                  : micOn
+                    ? "Микрофон включён: отвечайте"
+                    : "Микрофон выключен: нажмите, чтобы говорить"}
             </Status>
             <button onClick={finish} disabled={finishing} className="btn btn-light shrink-0">
-              {finishing ? "Разбираем… 30–60 с" : "Завершить звонок"}
+              {finishing ? "Разбираем… 30–60 с" : voiceUp ? "Завершить звонок" : "Получить разбор"}
             </button>
           </div>
         </CallBar>
