@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { Panel, PageHeader, Shell } from "../ui";
+import { Check, Play, Stop, Upload } from "../icons";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { formatTurns, parseTranscript, type SpokenTurn } from "@/lib/parse";
@@ -19,20 +20,20 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-function Card({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function Card({ n, title, children, delay }: { n: number; title: string; children: React.ReactNode; delay?: number }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-400 text-sm font-bold text-black">{n}</span>
+    <Panel delay={delay}>
+      <h2 className="mb-4 flex items-center gap-3 text-base font-semibold tracking-tight">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-accent text-sm font-semibold tabular-nums text-ink-950">{n}</span>
         {title}
       </h2>
       {children}
-    </section>
+    </Panel>
   );
 }
 
-const input = "w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none focus:border-emerald-400";
-const btn = "rounded-xl bg-emerald-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-40";
+const input = "field";
+const btn = "btn btn-primary px-4 py-2";
 
 export default function Analyze() {
   const router = useRouter();
@@ -178,38 +179,39 @@ export default function Analyze() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl space-y-5 px-4 py-8">
-      <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
-      <h1 className="text-2xl font-bold">Оценить реальный звонок</h1>
-      <p className="text-sm text-slate-400">Возьмите звонок из CRM, загрузите запись или вставьте готовый транскрипт. Оценка идёт по тому же чек-листу, но без знания скрытой причины пациента.</p>
+    <Shell>
+      <PageHeader eyebrow="Реальные звонки" title="Оценить реальный звонок">
+        Возьмите звонок из CRM, загрузите запись или вставьте готовый транскрипт. Оценка идёт по тому же чек-листу, но без знания скрытой причины пациента.
+      </PageHeader>
 
-      <Card n={1} title="Звонки из CRM (amoCRM)">
+      <div className="space-y-4">
+      <Card n={1} title="Звонки из CRM (amoCRM)" delay={100}>
         {conns === null ? (
-          <p className="text-sm text-slate-500">Проверяем подключения…</p>
+          <div className="h-10 animate-pulse rounded-xl bg-white/[0.04]" />
         ) : (
           <div className="space-y-4">
             {conns.length > 0 && (
-              <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+              <ul className="divide-y divide-white/[0.06] rounded-2xl bg-ink-950/40 ring-1 ring-inset ring-white/[0.06]">
                 {conns.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <span className="text-emerald-300">✅ {c.name} <span className="text-slate-500">({c.id})</span></span>
-                    <button onClick={() => disconnect(c.id)} className="text-xs text-slate-400 underline hover:text-slate-200">Отключить</button>
+                  <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="flex items-center gap-2 text-slate-100"><Check className="h-4 w-4 text-accent" />{c.name} <span className="text-slate-500">({c.id})</span></span>
+                    <button onClick={() => disconnect(c.id)} className="text-xs text-slate-500 underline-offset-4 transition hover:text-slate-200 hover:underline">Отключить</button>
                   </li>
                 ))}
               </ul>
             )}
 
             {(conns.length === 0 || showForm) ? (
-              <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="space-y-3 rounded-2xl bg-ink-950/40 p-4 ring-1 ring-inset ring-white/[0.06]">
                 <p className="text-sm text-slate-400">
                   Подключение по долгосрочному токену. В amoCRM откройте свою интеграцию → вкладка «Ключи» → «Сгенерировать токен» (срок от 1 дня до 5 лет). Токен хранится только на сервере, в зашифрованной cookie на 8 часов.
                 </p>
                 <label className="block text-sm">
-                  <span className="text-slate-300">Адрес аккаунта</span>
+                  <span className="text-slate-400">Адрес аккаунта</span>
                   <input className={`${input} mt-1`} placeholder="mycompany.amocrm.ru" value={account} onChange={(e) => setAccount(e.target.value)} autoComplete="off" />
                 </label>
                 <label className="block text-sm">
-                  <span className="text-slate-300">Долгосрочный токен</span>
+                  <span className="text-slate-400">Долгосрочный токен</span>
                   <input className={`${input} mt-1`} type="password" placeholder="Вставьте токен" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
                 </label>
                 <div className="flex gap-2">
@@ -217,17 +219,17 @@ export default function Analyze() {
                     {connecting ? "Подключаемся…" : "Подключиться к CRM"}
                   </button>
                   {conns.length > 0 && (
-                    <button className="rounded-xl border border-white/20 px-4 py-2 text-sm" onClick={() => { setShowForm(false); setCrmError(null); }}>Отмена</button>
+                    <button className="btn btn-ghost px-4 py-2" onClick={() => { setShowForm(false); setCrmError(null); }}>Отмена</button>
                   )}
                 </div>
               </div>
             ) : (
-              <button className="rounded-xl border border-dashed border-emerald-400/50 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/10" onClick={() => setShowForm(true)}>
-                ＋ Подключить ещё
+              <button className="btn px-4 py-2 text-accent border border-dashed border-accent/40 hover:bg-accent/10" onClick={() => setShowForm(true)}>
+                + Подключить ещё
               </button>
             )}
 
-            {crmError && <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{crmError}</p>}
+            {crmError && <p role="alert" className="alert alert-error">{crmError}</p>}
 
             {conns.length > 0 && (
               <>
@@ -248,26 +250,26 @@ export default function Analyze() {
                 </div>
                 <p className="text-xs text-slate-500">Показываются только звонки длиннее 10 секунд, период не больше 31 дня.</p>
                 {callErrors.map((e) => (
-                  <p key={e.account} role="alert" className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-2 text-xs text-amber-200">{e.account}: {e.error}</p>
+                  <p key={e.account} role="alert" className="alert alert-warn p-2 text-xs">{e.account}: {e.error}</p>
                 ))}
                 {calls && (calls.length === 0 ? (
                   <p className="text-sm text-slate-400">За этот период звонков не найдено.</p>
                 ) : (
-                  <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+                  <ul className="divide-y divide-white/[0.06] rounded-2xl bg-ink-950/40 ring-1 ring-inset ring-white/[0.06]">
                     {calls.map((c) => (
-                      <li key={c.key} className="p-3 text-sm">
+                      <li key={c.key} className="p-4 text-sm">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
-                            <p className="font-medium">
+                            <p className="flex flex-wrap items-center gap-2 font-medium tabular-nums">
                               {new Date(c.createdAt * 1000).toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" })}
-                              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${c.direction === "out" ? "bg-sky-500/20 text-sky-300" : "bg-violet-500/20 text-violet-300"}`}>{c.direction === "out" ? "Исходящий" : "Входящий"}</span>
-                              {conns.length > 1 && c.account && <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">{c.account}</span>}
+                              <span className="chip">{c.direction === "out" ? "↗ Исходящий" : "↙ Входящий"}</span>
+                              {conns.length > 1 && c.account && <span className="chip">{c.account}</span>}
                             </p>
-                            <p className="text-xs text-slate-400">{mmss(c.duration)} · {c.phone}{c.responsible && ` · ${c.responsible}`}{c.source && ` · ${c.source}`}</p>
+                            <p className="mt-0.5 text-xs tabular-nums text-slate-500">{mmss(c.duration)} · {c.phone}{c.responsible && ` · ${c.responsible}`}{c.source && ` · ${c.source}`}</p>
                           </div>
                           <div className="flex gap-2">
                             <button
-                              className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                              className="btn btn-ghost px-4 py-2"
                               disabled={!c.hasRecording}
                               onClick={() => {
                                 setPlayError(null);
@@ -275,7 +277,8 @@ export default function Analyze() {
                               }}
                               title={c.hasRecording ? "" : "У звонка нет записи"}
                             >
-                              {playingKey === c.key ? "⏹ Закрыть" : "▶ Прослушать"}
+                              {playingKey === c.key ? <Stop className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                              {playingKey === c.key ? "Закрыть" : "Прослушать"}
                             </button>
                             <button className={btn} disabled={!c.hasRecording || busyKey !== null} onClick={() => transcribeCall(c)} title={c.hasRecording ? "" : "У звонка нет записи"}>
                               {busyKey === c.key ? "Расшифровываем…" : c.hasRecording ? "Расшифровать" : "Нет записи"}
@@ -294,37 +297,38 @@ export default function Analyze() {
                               src={`/api/crm/recording?connection=${encodeURIComponent(c.connectionId ?? "")}&entity=${c.entity}&noteId=${c.noteId}`}
                               onError={() => setPlayError("Не удалось воспроизвести запись: ссылка телефонии могла устареть или требует авторизации.")}
                             />
-                            {playError && <p role="alert" className="mt-2 text-xs text-red-300">{playError}</p>}
+                            {playError && <p role="alert" className="mt-2 text-xs text-rose-300">{playError}</p>}
                           </div>
                         )}
                       </li>
                     ))}
                   </ul>
                 ))}
-                {truncated && <p className="text-xs text-amber-300">Показаны не все звонки: сузьте период.</p>}
+                {truncated && <p className="text-xs text-amber-200">Показаны не все звонки: сузьте период.</p>}
               </>
             )}
           </div>
         )}
       </Card>
 
-      <Card n={2} title="Загрузить диалог">
+      <Card n={2} title="Загрузить диалог" delay={140}>
         <p className="mb-3 text-sm text-slate-400">Аудиозапись звонка (mp3, wav, m4a, ogg, до 50 МБ) будет расшифрована с разделением по голосам. Можно загрузить и готовый текстовый файл (.txt).</p>
         <input ref={fileRef} type="file" accept="audio/*,video/mp4,.mp3,.wav,.m4a,.ogg,.opus,.flac,.aac,.txt,.md" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
         <button className={btn} onClick={() => fileRef.current?.click()} disabled={busyKey !== null}>
+          <Upload className="h-4 w-4" />
           {busyKey === "file" ? "Расшифровываем… это займёт до минуты" : "Загрузить диалог"}
         </button>
-        {sourceError && <p role="alert" className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{sourceError}</p>}
+        {sourceError && <p role="alert" className="alert alert-error mt-3">{sourceError}</p>}
       </Card>
 
       <div id="editor">
-        <Card n={3} title="Транскрипт для оценки">
+        <Card n={3} title="Транскрипт для оценки" delay={180}>
           <p className="mb-2 text-sm text-slate-400">Вставьте расшифровку или проверьте полученную из пунктов 1 и 2. Каждая реплика с новой строки: «Оператор:» или «Пациент:».</p>
           {diar && diar.speakers.length > 1 && (
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-3 text-sm">
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl bg-ink-950/40 p-3 text-sm ring-1 ring-inset ring-white/[0.06]">
               <span className="text-slate-300">Кто оператор?</span>
               {diar.speakers.map((s, i) => (
-                <button key={s} onClick={() => changeOperator(s)} className={`rounded-lg px-3 py-1 ${diar.operator === s ? "bg-emerald-400 font-semibold text-black" : "bg-white/10"}`}>Голос {i + 1}</button>
+                <button key={s} onClick={() => changeOperator(s)} className={`rounded-full px-3 py-1 transition ${diar.operator === s ? "bg-accent font-semibold text-ink-950" : "bg-white/[0.06] text-slate-300 hover:bg-white/10"}`}>Голос {i + 1}</button>
               ))}
               <span className="text-xs text-slate-500">Роли определены автоматически. Если перепутаны, переключите (текст ниже перезапишется).</span>
             </div>
@@ -334,15 +338,16 @@ export default function Analyze() {
             onChange={(e) => setText(e.target.value)}
             rows={14}
             placeholder={"Оператор: Добрый день, это Анна, стоматологическая клиника...\nПациент: Да, слушаю.\nОператор: ..."}
-            className="w-full rounded-xl border border-white/15 bg-white/5 p-4 text-sm outline-none focus:border-emerald-400"
+            className="field rounded-2xl p-4 font-mono text-[13px] leading-relaxed"
           />
-          <p className="mt-1 text-xs text-slate-500">Распознано реплик: {turns.length} (оператора: {ops})</p>
-          {evalError && <div role="alert" className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{evalError}</div>}
-          <button onClick={evaluate} disabled={evaluating || ops < 2} className="mt-4 rounded-xl bg-emerald-400 px-6 py-3 font-semibold text-black disabled:opacity-40">
+          <p className="mt-1.5 text-xs tabular-nums text-slate-500">Распознано реплик: {turns.length} (оператора: {ops})</p>
+          {evalError && <div role="alert" className="alert alert-error mt-3">{evalError}</div>}
+          <button onClick={evaluate} disabled={evaluating || ops < 2} className="btn btn-primary mt-4 px-6 py-3">
             {evaluating ? "Оцениваем… 30–60 с" : "Оценить звонок"}
           </button>
         </Card>
       </div>
-    </main>
+      </div>
+    </Shell>
   );
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import scenarios from "@/lib/scenarios-public.json";
 import clinic from "@/lib/clinic.json";
 import { startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
+import { Shell, Panel } from "../../ui";
+import { CallBar, MicButton, Status } from "../../call-ui";
+import { Book, Phone, Target } from "../../icons";
+import { context, initials, quote, years } from "../../patient-grid";
 
 type Mode = "idle" | "voice" | "text";
 
@@ -127,48 +130,61 @@ function Call({ id }: { id: string }) {
   const speaking = conversation.isSpeaking;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-6">
-      <header>
-        <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← Выбрать другого пациента</Link>
-        <h1 className="mt-1 text-2xl font-bold">{scenario.title}</h1>
-        <p className="text-sm text-slate-400">Карточка заявки: {scenario.lead}</p>
-        <p className="mt-1 text-sm text-slate-500">Вы — оператор колл-центра. Цель: записать пациента на приём и убедиться, что он придёт.</p>
+    <Shell back={{ href: "/app", label: "Другой пациент" }}>
+      <header className="rise mt-8 mb-5 flex items-start gap-4" style={{ animationDelay: "60ms" }}>
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.06] text-lg font-semibold tracking-tight text-slate-100 ring-1 ring-white/10">
+          {initials(scenario.name)}
+        </span>
+        <div className="min-w-0">
+          <p className="eyebrow">{scenario.short}, {years(scenario.age)} · {scenario.tag}</p>
+          <h1 className="mt-1 text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-4xl">{quote(scenario.title)}</h1>
+        </div>
       </header>
 
-      <details className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
-        <summary className="cursor-pointer font-medium">Памятка оператора: что известно о клинике</summary>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-300">
-          {clinic.memo.map((m, i) => <li key={i}>{m}</li>)}
+      <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+        <Panel delay={100} innerClassName="p-4">
+          <p className="text-xs font-medium text-slate-500">Карточка заявки</p>
+          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">{context(scenario.lead)}</p>
+        </Panel>
+        <Panel delay={140} tone="accent" innerClassName="p-4">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-accent"><Target className="h-3.5 w-3.5" />Ваша цель</p>
+          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">Вы оператор. Запишите пациента на приём и убедитесь, что он придёт.</p>
+        </Panel>
+      </div>
+
+      <details className="rise group mt-3 rounded-2xl bg-white/[0.03] p-4 text-sm ring-1 ring-inset ring-white/[0.06]" style={{ animationDelay: "180ms" }}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-slate-200">
+          <span className="flex items-center gap-2"><Book className="h-4 w-4 text-slate-500" />Памятка оператора: что известно о клинике</span>
+          <span className="text-xs text-slate-500 group-open:hidden">Открыть</span>
+          <span className="hidden text-xs text-slate-500 group-open:inline">Свернуть</span>
+        </summary>
+        <ul className="mt-3 space-y-2 text-slate-300">
+          {clinic.memo.map((m, i) => (
+            <li key={i} className="flex gap-2.5 leading-relaxed"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent/70" />{m}</li>
+          ))}
         </ul>
       </details>
 
-      {error && (
-        <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-          {error}
+      {error && <div role="alert" className="alert alert-error mt-3">{error}</div>}
+
+      {!live && (
+        <div className="rise mt-5 flex flex-col gap-2.5 sm:flex-row" style={{ animationDelay: "220ms" }}>
+          <button onClick={startVoice} disabled={busy} className="btn btn-primary group/btn py-1.5 pr-1.5 pl-6 sm:flex-1 sm:justify-between">
+            {busy ? "Набираем номер…" : "Позвонить пациенту голосом"}
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 group-hover/btn:scale-105"><Phone className="h-4 w-4" /></span>
+          </button>
+          <button onClick={startText} className="btn btn-ghost">Текстовый режим</button>
         </div>
       )}
 
-      {!live ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <button
-            onClick={startVoice}
-            disabled={busy}
-            className="rounded-xl bg-amber-400 px-5 py-3 font-semibold text-black disabled:opacity-50"
-          >
-            {busy ? "Набираем…" : "📞 Позвонить пациенту голосом"}
-          </button>
-          <button onClick={startText} className="rounded-xl border border-white/20 px-5 py-3 text-slate-200">
-            Текстовый режим
-          </button>
-        </div>
-      ) : null}
-
-      <section aria-label="Транскрипт" className="flex-1 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-black/30 p-4">
-        {transcript.length === 0 && <p className="text-sm text-slate-500">Здесь появится транскрипт звонка. Пациент возьмёт трубку первым, а вы представляетесь.</p>}
+      <section aria-label="Транскрипт" className="mt-5 flex min-h-48 flex-1 flex-col gap-2.5 rounded-3xl bg-ink-900/60 p-4 ring-1 ring-inset ring-white/[0.06]">
+        {transcript.length === 0 && (
+          <p className="m-auto max-w-[40ch] text-center text-sm text-pretty text-slate-500">Здесь появится транскрипт звонка. Пациент возьмёт трубку первым, а вы представляетесь.</p>
+        )}
         {transcript.map((t, i) => (
           <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${t.role === "user" ? "bg-amber-400 text-black" : "bg-white/10"}`}>
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase opacity-60">{t.role === "user" ? "Вы (оператор)" : scenario.short}</span>
+            <div className={`bubble ${t.role === "user" ? "bubble-mine" : "bubble-theirs"}`}>
+              <span className="bubble-label">{t.role === "user" ? "Вы, оператор" : scenario.short}</span>
               {t.text}
             </div>
           </div>
@@ -177,30 +193,19 @@ function Call({ id }: { id: string }) {
       </section>
 
       {live && (
-        <div className="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-3 border-t border-white/10 bg-[#0b0d12]/95 px-4 pb-4 pt-3 backdrop-blur">
+        <CallBar>
           <div className="flex items-center gap-3">
-            {mode === "voice" && (
-              <button
-                onClick={() => conversation.setMuted(micOn)}
-                aria-pressed={micOn}
-                aria-label={micOn ? "Выключить микрофон" : "Включить микрофон"}
-                className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-2xl transition ${
-                  micOn ? "animate-pulse bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]" : "bg-slate-700 text-slate-300"
-                }`}
-              >
-                {micOn ? "🎙" : "🔇"}
-              </button>
-            )}
-            <span className="min-w-0 flex-1 text-sm text-slate-300">
+            {mode === "voice" && <MicButton on={micOn} onToggle={() => conversation.setMuted(micOn)} />}
+            <Status live={mode === "voice" && (speaking || micOn)}>
               {mode === "voice"
                 ? speaking
-                  ? `🔊 ${scenario.short} говорит…`
+                  ? `${scenario.short} говорит…`
                   : micOn
                     ? "Микрофон включён: говорите"
                     : "Микрофон выключен: нажмите, чтобы говорить"
-                : "⌨ Текстовый режим"}
-            </span>
-            <button onClick={finish} disabled={finishing} className="shrink-0 rounded-xl bg-white px-4 py-3 font-semibold text-black disabled:opacity-50">
+                : "Текстовый режим"}
+            </Status>
+            <button onClick={finish} disabled={finishing} className="btn btn-light shrink-0">
               {finishing ? "Оцениваем… 30–60 с" : "Завершить звонок"}
             </button>
           </div>
@@ -215,14 +220,12 @@ function Call({ id }: { id: string }) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={mode === "voice" ? "Или напишите сообщение…" : "Напишите реплику оператора…"}
-              className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-3 outline-none focus:border-amber-400"
+              className="field min-w-0 flex-1 rounded-full px-5 py-3"
             />
-            <button disabled={busy || !draft.trim()} className="rounded-xl bg-amber-400 px-5 font-semibold text-black disabled:opacity-40">
-              Отправить
-            </button>
+            <button disabled={busy || !draft.trim()} className="btn btn-primary">Отправить</button>
           </form>
-        </div>
+        </CallBar>
       )}
-    </main>
+    </Shell>
   );
 }
