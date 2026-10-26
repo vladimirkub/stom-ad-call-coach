@@ -40,7 +40,7 @@ export default function Calculator() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-5 px-4 py-8">
-      <Link href="/" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
+      <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
       <h1 className="text-2xl font-bold">Калькулятор потерь</h1>
       <p className="rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-sm text-amber-200">
         Это модельный расчёт. Значения по умолчанию условные, подставьте реальные цифры клиники из CRM.

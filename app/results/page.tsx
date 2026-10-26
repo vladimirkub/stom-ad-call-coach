@@ -116,7 +116,7 @@ export default function Results() {
     return (
       <main className="mx-auto max-w-2xl px-5 py-16">
         <p className="mb-4">Сессия не найдена.</p>
-        <Link href="/" className="text-amber-400 underline">Выбрать пациента</Link>
+        <Link href="/app" className="text-amber-400 underline">Выбрать пациента</Link>
       </main>
     );
   }
@@ -337,7 +337,7 @@ export default function Results() {
       </details>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/" className="inline-block rounded-xl bg-amber-400 px-6 py-3 font-semibold text-black">{virtual ? "На главную" : real ? "На главную" : "Другой пациент или ещё раз"}</Link>
+        <Link href="/app" className="inline-block rounded-xl bg-amber-400 px-6 py-3 font-semibold text-black">{virtual ? "На главную" : real ? "На главную" : "Другой пациент или ещё раз"}</Link>
         {virtual && (
           <Link href="/operator" className="inline-block rounded-xl border border-white/20 px-6 py-3 font-semibold">Ещё один звонок оператора</Link>
         )}

@@ -52,6 +52,9 @@ test("operator prompt injects practices and knows nothing about any patient role
     assert.ok(!p.includes(s.hiddenObjection.slice(0, 40)), "hidden objection leaked");
     assert.ok(!p.includes(s.prompt.slice(0, 40)), "patient persona leaked");
   }
+  assert.match(p, /ЗАКАНЧИВАЕТСЯ вопросом/); // every turn ends with a question that moves toward booking
+  assert.match(p, /ОТРАБОТКА ВОЗРАЖЕНИЙ/);
+  assert.match(p, /Не отпускай человека на «подумаю»/);
   assert.equal(practicesBlock({ dos: [], avoids: [] }), "");
   assert.match(operatorFirstMessage(), /удобно говорить/);
 });

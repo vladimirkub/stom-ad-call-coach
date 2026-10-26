@@ -179,7 +179,7 @@ export default function Analyze() {
 
   return (
     <main className="mx-auto max-w-3xl space-y-5 px-4 py-8">
-      <Link href="/" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
+      <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
       <h1 className="text-2xl font-bold">Оценить реальный звонок</h1>
       <p className="text-sm text-slate-400">Возьмите звонок из CRM, загрузите запись или вставьте готовый транскрипт. Оценка идёт по тому же чек-листу, но без знания скрытой причины пациента.</p>
 

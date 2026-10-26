@@ -45,7 +45,7 @@ export default function Knowledge() {
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <Link href="/" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
+      <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
       <div>
         <h1 className="text-2xl font-bold">База знаний виртуального оператора</h1>
         <p className="mt-1 text-sm text-slate-400">

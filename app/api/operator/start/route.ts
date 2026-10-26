@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
-import { agentIdFor, signedUrlFor } from "@/lib/agents";
+import { agentIdFor, conversationTokenFor, signedUrlFor } from "@/lib/agents";
+import { FAST_PROMPT, FAST_TURN } from "@/lib/voice-config";
 import { loadKb, selectPractices } from "@/lib/kb";
 import { operatorFirstMessage, operatorPrompt } from "@/lib/operator";
 import clinic from "@/lib/clinic.json";
@@ -26,10 +27,11 @@ export async function POST(req: Request) {
       headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         conversation_config: {
+          turn: FAST_TURN,
           agent: {
             first_message: operatorFirstMessage(),
             language: "ru",
-            prompt: { prompt: operatorPrompt({ memo: clinic.memo, practices }), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash" },
+            prompt: { prompt: operatorPrompt({ memo: clinic.memo, practices }), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash", ...FAST_PROMPT },
           },
         },
       }),
@@ -38,7 +40,8 @@ export async function POST(req: Request) {
       console.error("[operator/start] PATCH", res.status, await res.text().catch(() => ""));
       return NextResponse.json({ error: `Не удалось подготовить оператора (ElevenLabs ${res.status})` }, { status: 502 });
     }
-    return NextResponse.json({ signedUrl: await signedUrlFor(agentId), practicesApplied: practices.dos.length + practices.avoids.length });
+    const [signedUrl, conversationToken] = await Promise.all([signedUrlFor(agentId), conversationTokenFor(agentId)]);
+    return NextResponse.json({ signedUrl, conversationToken, practicesApplied: practices.dos.length + practices.avoids.length });
   } catch (e) {
     console.error("[operator/start]", e);
     return NextResponse.json({ error: e instanceof Error ? e.message : "Не удалось начать звонок" }, { status: 502 });

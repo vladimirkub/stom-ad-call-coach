@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
 import { scenarioIds } from "@/lib/scenarios";
-import { agentIdFor } from "@/lib/agents";
+import { agentIdFor, conversationTokenFor } from "@/lib/agents";
 
 export async function GET(req: Request) {
   const limited = rateLimit(req, "voice", 10);
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     if (!res.ok) return NextResponse.json({ error: `ElevenLabs вернул ошибку ${res.status}` }, { status: 502 });
     const body = (await res.json()) as { signed_url?: string };
     if (!body.signed_url) return NextResponse.json({ error: "ElevenLabs не вернул signed URL" }, { status: 502 });
-    return NextResponse.json({ signedUrl: body.signed_url });
+    return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId) });
   } catch {
     return NextResponse.json({ error: "Не удалось связаться с ElevenLabs" }, { status: 502 });
   }

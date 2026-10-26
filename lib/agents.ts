@@ -22,3 +22,20 @@ export async function signedUrlFor(agentId: string): Promise<string> {
   if (!body.signed_url) throw new Error("ElevenLabs не вернул signed URL");
   return body.signed_url;
 }
+
+/** WebRTC conversation token (lower latency than the WebSocket signed URL). Best effort: null if unavailable. */
+export async function conversationTokenFor(agentId: string): Promise<string | null> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`, {
+      headers: { "xi-api-key": apiKey },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { token?: string };
+    return body.token ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -1,5 +1,6 @@
 // Setup: creates or updates one ElevenLabs agent per patient scenario; ids are stored in .agents.json.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { FAST_PROMPT, FAST_TURN } from "../lib/voice-config.ts";
 import { OPERATOR_VOICE_ID, operatorFirstMessage, operatorPrompt } from "../lib/operator.ts";
 
 const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -23,10 +24,11 @@ const jobs = pub.map((s) => {
     key: s.id,
     name: `${brand.name} - ${s.name}`,
     conversation_config: {
+      turn: FAST_TURN,
       agent: {
         first_message: s.firstMessage,
         language: "ru",
-        prompt: { prompt: p.prompt.replace("{{SITE_FACTS}}", clinic.promptFacts), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash" },
+        prompt: { prompt: p.prompt.replace("{{SITE_FACTS}}", clinic.promptFacts), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash", ...FAST_PROMPT },
       },
       tts: { voice_id: p.voiceId, model_id: "eleven_flash_v2_5" },
     },
@@ -39,10 +41,11 @@ jobs.push({
   key: "operator",
   name: `${brand.name} - Виртуальный оператор`,
   conversation_config: {
+    turn: FAST_TURN,
     agent: {
       first_message: operatorFirstMessage(),
       language: "ru",
-      prompt: { prompt: operatorPrompt({ memo: clinic.memo }), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash" },
+      prompt: { prompt: operatorPrompt({ memo: clinic.memo }), llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash", ...FAST_PROMPT },
     },
     tts: { voice_id: OPERATOR_VOICE_ID, model_id: "eleven_flash_v2_5" },
   },

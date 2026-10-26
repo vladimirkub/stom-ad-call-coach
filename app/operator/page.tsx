@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { createAmbience, type Ambience } from "@/lib/ambience";
+import { startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
 
 export default function OperatorPage() {
@@ -80,7 +81,7 @@ function Call() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать звонок");
       setApplied(body.practicesApplied ?? 0);
-      await conversation.startSession({ signedUrl: body.signedUrl });
+      await startSessionFast(conversation, body);
       setLive(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось начать звонок");
@@ -112,7 +113,7 @@ function Call() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-6">
       <header>
-        <Link href="/" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
+        <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← На главную</Link>
         <h1 className="mt-1 text-2xl font-bold">Виртуальный оператор звонит вам</h1>
         <p className="text-sm text-slate-400">
           Вы — пациент, оставивший заявку на сайте клиники. Сценария нет: выдумывайте любые запросы, вопросы и возражения, как в жизни. Можете согласиться, сомневаться, торговаться, отказаться или уйти от темы. Оператор о вас ничего не знает и подстраивается по ходу разговора.

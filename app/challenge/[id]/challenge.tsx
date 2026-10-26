@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import scenarios from "@/lib/scenarios-public.json";
 import clinic from "@/lib/clinic.json";
+import { startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
 
 type Mode = "idle" | "voice" | "text";
@@ -58,7 +59,7 @@ function Call({ id }: { id: string }) {
       const res = await fetch(`/api/signed-url?scenario=${id}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
-      await conversation.startSession({ signedUrl: body.signedUrl });
+      await startSessionFast(conversation, body);
       setMode("voice");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось запустить голос");
@@ -128,7 +129,7 @@ function Call({ id }: { id: string }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-6">
       <header>
-        <Link href="/" className="text-xs text-slate-500 hover:text-slate-300">← Выбрать другого пациента</Link>
+        <Link href="/app" className="text-xs text-slate-500 hover:text-slate-300">← Выбрать другого пациента</Link>
         <h1 className="mt-1 text-2xl font-bold">{scenario.title}</h1>
         <p className="text-sm text-slate-400">Карточка заявки: {scenario.lead}</p>
         <p className="mt-1 text-sm text-slate-500">Вы — оператор колл-центра. Цель: записать пациента на приём и убедиться, что он придёт.</p>
