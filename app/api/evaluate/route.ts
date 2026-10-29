@@ -5,6 +5,8 @@ import { gemmaJson } from "@/lib/gemma";
 import { rubricFor, skillScores, totalScore, type ChecklistItem } from "@/lib/scoring";
 import { getScenario } from "@/lib/scenarios";
 import clinic from "@/lib/clinic.json";
+import { currentUser } from "@/lib/session";
+import { parseAttempt, saveTraining } from "@/lib/trainings";
 
 function systemPrompt(real: boolean) {
   const rubric = rubricFor(real);
@@ -79,6 +81,12 @@ ${text}
       hiddenObjection: scenario?.hiddenObjection ?? "",
       showUpRisk: scenario?.showUpRisk ?? "",
     };
+    // Calls with a virtual patient go into the trainee's history; real-call analysis does not.
+    const attempt = scenario ? parseAttempt(body?.attempt) : null;
+    const user = attempt ? await currentUser() : null;
+    if (attempt && user && scenario) {
+      saveTraining({ attempt, userId: user.id, clinicId: user.clinic?.id ?? null, scenarioId: scenario.id, transcript, result });
+    }
     return NextResponse.json(result);
   } catch (e) {
     console.error("[evaluate]", e);

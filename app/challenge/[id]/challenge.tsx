@@ -34,6 +34,9 @@ function Call({ id }: { id: string }) {
   const [draft, setDraft] = useState("");
   const [hungUp, setHungUp] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  // Set when the call starts; the evaluation saves the call to the trainee's history under this id.
+  const attempt = useRef<{ id: string; startedAt: number } | null>(null);
+  const beginAttempt = () => (attempt.current = { id: crypto.randomUUID(), startedAt: Date.now() });
 
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
 
@@ -69,6 +72,7 @@ function Call({ id }: { id: string }) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
       await startSessionFast(conversation, body);
+      beginAttempt();
       setMode("voice");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось запустить голос");
@@ -80,6 +84,7 @@ function Call({ id }: { id: string }) {
   function startText() {
     setError(null);
     setTranscript([{ role: "agent", text: scenario.firstMessage }]);
+    beginAttempt();
     setMode("text");
   }
 
@@ -122,7 +127,16 @@ function Call({ id }: { id: string }) {
       const res = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenarioId: id, transcript }),
+        body: JSON.stringify({
+          scenarioId: id,
+          transcript,
+          attempt: attempt.current && {
+            ...attempt.current,
+            mode,
+            endedBy: hungUp ? "patient" : "operator",
+            live: [...done],
+          },
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось оценить сессию");

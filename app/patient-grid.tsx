@@ -88,15 +88,39 @@ export default function PatientGrid() {
 }
 
 // Summary line for the section header: attempts and best score across all patients.
+type Progress = { count: number; average: number | null; last7: { count: number; average: number | null }; change7: number | null };
+
+/** The trainee's own progress from the server: all evaluated calls, average score, and the trend over the last 7 days. */
 export function PatientStats() {
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  useEffect(() => setHistory(getHistory()), []);
-  const mine = history.filter((h) => scenarios.some((s) => s.id === h.scenarioId));
-  if (mine.length === 0) return null;
-  const best = mine.reduce((m, h) => Math.max(m, h.total), 0);
+  const [p, setP] = useState<Progress | null>(null);
+  useEffect(() => {
+    fetch("/api/me/progress", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setP)
+      .catch(() => null);
+  }, []);
+  if (!p) return null;
+  if (p.count === 0) return <p className="shrink-0 text-xs text-slate-500">Пока нет оценённых звонков</p>;
+  const trend = p.change7;
   return (
-    <p className="shrink-0 text-xs tabular-nums text-slate-500">
-      Попыток <span className="text-slate-300">{mine.length}</span> · лучший <span className="text-slate-300">{best}/100</span>
-    </p>
+    <dl className="flex shrink-0 items-baseline gap-4 text-xs tabular-nums text-slate-500" aria-label="Мой прогресс">
+      <div>
+        <dt className="inline">Тренировок </dt>
+        <dd className="inline text-slate-200">{p.count}</dd>
+      </div>
+      <div>
+        <dt className="inline">Средний балл </dt>
+        <dd className="inline text-slate-200">{p.average}/100</dd>
+      </div>
+      {trend !== null && (
+        <div title="Средний балл за последние 7 дней против 7 дней до них">
+          <dt className="inline">За неделю </dt>
+          <dd className={`inline ${trend > 0 ? "text-accent" : trend < 0 ? "text-rose-300" : "text-slate-200"}`}>
+            {trend > 0 ? "+" : ""}
+            {trend}
+          </dd>
+        </div>
+      )}
+    </dl>
   );
 }

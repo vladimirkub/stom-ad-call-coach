@@ -34,6 +34,26 @@ CREATE TABLE IF NOT EXISTS setup_tokens (
   token_hash TEXT PRIMARY KEY,
   expires_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS trainings (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  clinic_id INTEGER REFERENCES clinics(id),
+  scenario_id TEXT NOT NULL,
+  mode TEXT NOT NULL CHECK (mode IN ('voice', 'text')),
+  legend_version TEXT,
+  started_at INTEGER NOT NULL,
+  duration_s INTEGER NOT NULL,
+  ended_by TEXT,
+  transcript TEXT NOT NULL,
+  live_checklist TEXT NOT NULL,
+  scores TEXT NOT NULL,
+  total INTEGER NOT NULL,
+  booked INTEGER NOT NULL,
+  evaluation TEXT NOT NULL,
+  evaluated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trainings_user ON trainings(user_id, started_at);
+CREATE INDEX IF NOT EXISTS trainings_clinic ON trainings(clinic_id, started_at);
 CREATE INDEX IF NOT EXISTS users_clinic ON users(clinic_id);
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
 `;
