@@ -35,8 +35,10 @@ TAR="$(mktemp "${TMPDIR:-/tmp}/stomad.XXXXXX")"
 trap 'rm -f "$TAR"; [ -n "$HOST" ] && ssh -O exit "${SSH_OPTS[@]}" "$HOST" >/dev/null 2>&1 || true' EXIT
 
 # Tracked + new files minus everything .gitignore excludes (so no .env*, node_modules, .next, data/, .agents.json).
+# Tracked files deleted locally but not yet committed are skipped, or tar would fail on them.
 # COPYFILE_DISABLE: macOS tar would otherwise add "._name" metadata files next to files that carry extended attributes.
-git ls-files --cached --others --exclude-standard -z | COPYFILE_DISABLE=1 tar --no-xattrs --null -czf "$TAR" -T -
+git ls-files --cached --others --exclude-standard -z | while IFS= read -r -d '' f; do [ -e "$f" ] && printf '%s\0' "$f"; done |
+  COPYFILE_DISABLE=1 tar --no-xattrs --null -czf "$TAR" -T -
 COUNT=$(tar -tzf "$TAR" | wc -l | tr -d ' ')
 if tar -tzf "$TAR" | grep -E '(^|/)(\.env$|\.env\.local$|\.env\.(production|development)(\.local)?$|\.agents\.json|knowledge-base\.json|node_modules/|\.next/)' >/dev/null; then
   echo "refusing: the archive contains a secret or build artifact" >&2; exit 4
