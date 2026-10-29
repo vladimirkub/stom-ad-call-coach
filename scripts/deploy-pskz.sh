@@ -6,6 +6,8 @@
 #
 # First install: swap, Node 22, nginx, ufw (22/80/443), key-only SSH, the app via deploy-timeweb.sh (with secrets),
 # a systemd unit, and a short-lived Let's Encrypt certificate for the bare IP (renewed automatically).
+# Every run also makes sure the password-encryption key and the daily database backup exist.
+# First owner login afterwards: ssh in, `cd stom-ad-call-coach && node scripts/owner-setup.mjs https://<domain>`.
 # Run it only after `ssh -i $SSH_KEY host` works: it switches password logins off.
 set -euo pipefail
 
@@ -21,6 +23,29 @@ remote() { ssh "${SSH_ARGS[@]}" "$HOST" "$@"; }
 cd "$(dirname "$0")/.."
 
 remote true || { echo "cannot log in to $HOST with the key; nothing was changed" >&2; exit 6; }
+
+echo "== password key and database backups"
+# Runs on every deploy and changes nothing once in place. The key that encrypts trainee passwords is made on the server
+# and kept outside the app directory, so redeploying (even with --env) never replaces it and the database alone reveals nothing.
+remote "APP_DIR=$APP_DIR bash -s" <<'SECRETS'
+set -euo pipefail
+ENV_FILE=/etc/stom-ad-call-coach.env
+if ! grep -q '^PASSWORD_KEY=' "$ENV_FILE" 2>/dev/null; then
+  umask 077 && echo "PASSWORD_KEY=$(head -c 36 /dev/urandom | base64 | tr -d '\n=+/')" >> "$ENV_FILE"
+fi
+chmod 600 "$ENV_FILE"
+UNIT=/etc/systemd/system/stom-ad-call-coach.service
+if [ -f "$UNIT" ] && ! grep -q "^EnvironmentFile=$ENV_FILE" "$UNIT"; then
+  sed -i "/^Environment=NODE_ENV=production/i EnvironmentFile=$ENV_FILE" "$UNIT" && systemctl daemon-reload
+fi
+# Daily consistent copy of the accounts database at 03:30, 14 days kept.
+command -v sqlite3 >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sqlite3 >/dev/null
+mkdir -p /var/backups/stom-ad-call-coach
+cat > /etc/cron.d/stom-ad-call-coach-backup <<CRON
+30 3 * * * root [ -f $APP_DIR/data/coach.db ] && sqlite3 $APP_DIR/data/coach.db ".backup /var/backups/stom-ad-call-coach/coach-\$(date +\\%F).db" && find /var/backups/stom-ad-call-coach -name 'coach-*.db' -mtime +14 -delete
+CRON
+echo "password key in $ENV_FILE, daily backups in /var/backups/stom-ad-call-coach"
+SECRETS
 
 if [ "$MODE" = "--update" ]; then
   scripts/deploy-timeweb.sh "$HOST" --update --build
@@ -64,6 +89,7 @@ After=network.target
 WorkingDirectory=$APP_DIR
 ExecStart=$APP_DIR/node_modules/.bin/next start -H 127.0.0.1 -p $PORT
 Restart=on-failure
+EnvironmentFile=/etc/stom-ad-call-coach.env
 Environment=NODE_ENV=production
 # ps.kz has no working IPv6 route to Google: DNS returns the AAAA record first and connects hang for 10 s
 Environment=NODE_OPTIONS=--dns-result-order=ipv4first

@@ -1,17 +1,21 @@
 import Link from "next/link";
 import brand from "@/lib/brand.json";
 import { ArrowLeft, Waveform } from "./icons";
+import { AccountChip } from "./auth-gate";
 
 // Shared page chrome for the inner pages: the brand pill, a back link, a headline block and double-bezel panels.
 
 export function Brand() {
   return (
-    <Link href="/app" className="flex items-center gap-2.5 rounded-full bg-white/[0.03] p-1.5 pr-4 ring-1 ring-white/[0.07] backdrop-blur-xl transition hover:bg-white/[0.06]">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-ink-950">
-        <Waveform className="h-4 w-4" />
-      </span>
-      <span className="text-sm font-semibold tracking-tight">{brand.name}</span>
-    </Link>
+    <div className="flex flex-wrap items-center gap-2">
+      <Link href="/app" className="flex items-center gap-2.5 rounded-full bg-white/[0.03] p-1.5 pr-4 ring-1 ring-white/[0.07] backdrop-blur-xl transition hover:bg-white/[0.06]">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-ink-950">
+          <Waveform className="h-4 w-4" />
+        </span>
+        <span className="text-sm font-semibold tracking-tight">{brand.name}</span>
+      </Link>
+      <AccountChip />
+    </div>
   );
 }
 
