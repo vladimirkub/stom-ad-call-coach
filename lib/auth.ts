@@ -217,10 +217,11 @@ export function listClinics() {
   return db()
     .prepare(
       `SELECT c.id, c.legal_name AS legalName, c.slug, c.city, c.created_at AS createdAt,
-              COUNT(u.id) AS users, SUM(u.active) AS activeUsers
+              COUNT(u.id) AS users, SUM(u.active) AS activeUsers,
+              (SELECT version FROM legends l WHERE l.clinic_id = c.id AND l.status = 'approved') AS legendVersion
        FROM clinics c LEFT JOIN users u ON u.clinic_id = c.id GROUP BY c.id ORDER BY c.legal_name`,
     )
-    .all() as { id: number; legalName: string; slug: string; city: string; createdAt: number; users: number; activeUsers: number | null }[];
+    .all() as { id: number; legalName: string; slug: string; city: string; createdAt: number; users: number; activeUsers: number | null; legendVersion: number | null }[];
 }
 
 export function listTrainees(clinicId: number) {

@@ -52,6 +52,19 @@ CREATE TABLE IF NOT EXISTS trainings (
   evaluation TEXT NOT NULL,
   evaluated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS legends (
+  id INTEGER PRIMARY KEY,
+  clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+  status TEXT NOT NULL CHECK (status IN ('analyzing', 'draft', 'failed', 'approved', 'archived')),
+  version INTEGER,
+  facts TEXT NOT NULL DEFAULT '[]',
+  pages TEXT NOT NULL DEFAULT '[]',
+  error TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  approved_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS legends_clinic ON legends(clinic_id, status);
 CREATE INDEX IF NOT EXISTS trainings_user ON trainings(user_id, started_at);
 CREATE INDEX IF NOT EXISTS trainings_clinic ON trainings(clinic_id, started_at);
 CREATE INDEX IF NOT EXISTS users_clinic ON users(clinic_id);
@@ -68,6 +81,10 @@ export function db(): DatabaseSync {
     const conn = new DatabaseSync(path);
     conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;");
     conn.exec(SCHEMA);
+    // Columns added after the first release; ALTER only where an older database lacks them.
+    const clinicCols = conn.prepare("PRAGMA table_info(clinics)").all() as { name: string }[];
+    if (!clinicCols.some((c) => c.name === "sites")) conn.exec("ALTER TABLE clinics ADD COLUMN sites TEXT NOT NULL DEFAULT '[]'");
+    if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
     g.__coachDb = conn;
   }
   return g.__coachDb;

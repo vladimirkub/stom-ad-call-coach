@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth-gate";
 import { PageHeader, Panel, PanelTitle, Shell } from "../ui";
 import { StatsPanel, type StatsView } from "./stats";
+import { LegendEditor } from "./legend";
 
-type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null };
+type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null };
 type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -103,7 +104,9 @@ export default function Admin() {
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{c.legalName}</span>
-                        <span className="block text-xs text-slate-500">{c.city} · {c.slug}</span>
+                        <span className="block text-xs text-slate-500">
+                          {c.city} · {c.slug} · {c.legendVersion ? <span className="text-accent">легенда v{c.legendVersion}</span> : "без легенды"}
+                        </span>
                       </span>
                       <span className="shrink-0 text-xs tabular-nums text-slate-400">{c.activeUsers ?? 0}/{c.users}</span>
                     </button>
@@ -114,7 +117,7 @@ export default function Admin() {
           </Panel>
           <NewClinic onCreated={async (id) => { await loadClinics(); setSelected(id); }} />
         </div>
-        {clinic ? <ClinicUsers key={clinic.id} clinic={clinic} onChanged={loadClinics} onStats={() => go({ view: "clinic", id: clinic.id })} /> : null}
+        {clinic ? <ClinicSection key={clinic.id} clinic={clinic} onChanged={loadClinics} onStats={() => go({ view: "clinic", id: clinic.id })} /> : null}
       </div>
       )}
     </Shell>
@@ -163,6 +166,35 @@ function NewClinic({ onCreated }: { onCreated: (id: number) => void }) {
         <button type="submit" className="btn btn-ghost" disabled={busy}>{busy ? "Сохраняем…" : "Добавить клинику"}</button>
       </form>
     </Panel>
+  );
+}
+
+/** One clinic in the access tab: its trainees, or its legend. */
+function ClinicSection({ clinic, onChanged, onStats }: { clinic: Clinic; onChanged: () => void; onStats: () => void }) {
+  const [part, setPart] = useState<"users" | "legend">("users");
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      <div role="tablist" aria-label="Раздел клиники" className="flex w-fit gap-1 rounded-full bg-white/[0.03] p-1 ring-1 ring-white/[0.07]">
+        {(
+          [
+            ["users", "Администраторы"],
+            ["legend", clinic.legendVersion ? `Легенда · v${clinic.legendVersion}` : "Легенда"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={part === key}
+            onClick={() => setPart(key)}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${part === key ? "bg-white/[0.1] text-slate-50" : "text-slate-400 hover:bg-white/[0.05]"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {part === "users" ? <ClinicUsers clinic={clinic} onChanged={onChanged} onStats={onStats} /> : <LegendEditor clinicId={clinic.id} onChanged={onChanged} />}
+    </div>
   );
 }
 
