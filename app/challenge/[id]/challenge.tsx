@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { useClinicData } from "../../clinic-data";
 import scenarios from "@/lib/scenarios-public.json";
-import { startSessionFast } from "@/lib/voice";
+import { reportCall, startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
 import { Shell, Panel } from "../../ui";
 import { CallBar, MicButton, Status } from "../../call-ui";
@@ -42,6 +42,7 @@ function Call({ id }: { id: string }) {
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
 
   const conversation = useConversation({
+    onConnect: ({ conversationId }) => reportCall(conversationId, "patient", id),
     onMessage: ({ role, message }) => {
       // Expressive voices may carry audio tags like "[sighs]": they shape the voice, not the transcript.
       const text = (role === "agent" ? message?.replace(/\[[^\]\n]{1,30}\]\s*/g, "") : message)?.trim();

@@ -7,6 +7,16 @@ type Conversation = ReturnType<typeof useConversation>;
 // which the Next.js dev overlay shows as an error. The call is already over by then; real failures still reach onError/onDisconnect.
 setLogLevel("silent", LoggerNames.Signal);
 
+/** Tells the server who started this ElevenLabs conversation, for the owner's usage view. Best effort: a call never waits on it. */
+export function reportCall(conversationId: string, kind: "patient" | "operator", scenarioId?: string) {
+  void fetch("/api/usage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ conversationId, kind, scenarioId }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 /**
  * Starts a voice session over WebRTC (lower latency) and falls back to the WebSocket signed URL.
  * Open the page with ?transport=ws to force the WebSocket path.

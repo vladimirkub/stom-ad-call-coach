@@ -64,6 +64,19 @@ CREATE TABLE IF NOT EXISTS legends (
   updated_at INTEGER NOT NULL,
   approved_at INTEGER
 );
+CREATE TABLE IF NOT EXISTS usage (
+  conversation_id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  clinic_id INTEGER REFERENCES clinics(id),
+  kind TEXT NOT NULL CHECK (kind IN ('patient', 'operator')),
+  scenario_id TEXT,
+  started_at INTEGER NOT NULL,
+  duration_s INTEGER,
+  cost_usd REAL,
+  status TEXT,
+  synced_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS usage_user ON usage(user_id, started_at);
 CREATE INDEX IF NOT EXISTS legends_clinic ON legends(clinic_id, status);
 CREATE INDEX IF NOT EXISTS trainings_user ON trainings(user_id, started_at);
 CREATE INDEX IF NOT EXISTS trainings_clinic ON trainings(clinic_id, started_at);

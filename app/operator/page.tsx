@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
-import { startSessionFast } from "@/lib/voice";
+import { reportCall, startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
 import { PageHeader, Shell } from "../ui";
 import { CallBar, MicButton, Status } from "../call-ui";
@@ -31,6 +31,7 @@ function Call() {
   const endRef = useRef<HTMLDivElement>(null);
 
   const conversation = useConversation({
+    onConnect: ({ conversationId }) => reportCall(conversationId, "operator"),
     onMessage: ({ role, message }) => {
       // The expressive voice may carry audio tags like "[warmly]": they shape the voice, not the transcript.
       const text = (role === "agent" ? message?.replace(/\[[^\]\n]{1,30}\]\s*/g, "") : message)?.trim();

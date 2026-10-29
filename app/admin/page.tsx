@@ -5,6 +5,7 @@ import { useAuth } from "../auth-gate";
 import { PageHeader, Panel, PanelTitle, Shell } from "../ui";
 import { StatsPanel, type StatsView } from "./stats";
 import { LegendEditor } from "./legend";
+import { UsagePanel } from "./usage";
 
 type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null };
 type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean };
@@ -22,7 +23,7 @@ const accessText = (u: { login: string; password: string | null }) =>
 // Owner-only: training statistics, and clinics with their trainees' generated logins and passwords.
 export default function Admin() {
   const auth = useAuth();
-  const [tab, setTab] = useState<"stats" | "access">("stats");
+  const [tab, setTab] = useState<"stats" | "usage" | "access">("stats");
   const [nav, setNav] = useState<StatsView>({ view: "overview" });
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -58,15 +59,18 @@ export default function Admin() {
   const clinic = clinics.find((c) => c.id === selected) ?? null;
   return (
     <Shell width="max-w-6xl">
-      <PageHeader eyebrow="Админка" title={tab === "stats" ? "Статистика тренировок" : "Клиники и доступы"}>
+      <PageHeader eyebrow="Админка" title={tab === "stats" ? "Статистика тренировок" : tab === "usage" ? "Расход и тарифы" : "Клиники и доступы"}>
         {tab === "stats"
           ? "Кто тренируется, с каким результатом и на чём ошибается. Нажмите на клинику, администратора или звонок, чтобы открыть подробности."
-          : "Заведите клинику, добавьте её администраторов и отправьте каждому логин и пароль."}
+          : tab === "usage"
+            ? "Сколько минут голоса тратит каждая клиника и каждый администратор, во что это обходится и какой тариф ставить в договор."
+            : "Заведите клинику, добавьте её администраторов и отправьте каждому логин и пароль."}
       </PageHeader>
       <div role="tablist" aria-label="Разделы админки" className="mb-5 flex w-fit gap-1 rounded-full bg-white/[0.03] p-1 ring-1 ring-white/[0.07]">
         {(
           [
             ["stats", "Статистика"],
+            ["usage", "Расход"],
             ["access", "Клиники и доступы"],
           ] as const
         ).map(([key, label]) => (
@@ -75,7 +79,7 @@ export default function Admin() {
             type="button"
             role="tab"
             aria-selected={tab === key}
-            onClick={() => (key === "stats" ? go({ view: "overview" }) : setTab("access"))}
+            onClick={() => (key === "stats" ? go({ view: "overview" }) : setTab(key))}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${tab === key ? "bg-accent text-ink-950" : "text-slate-300 hover:bg-white/[0.06]"}`}
           >
             {label}
@@ -85,6 +89,8 @@ export default function Admin() {
       {error && <p role="alert" className="alert alert-error mb-4">{error}</p>}
       {tab === "stats" ? (
         <StatsPanel nav={nav} go={go} />
+      ) : tab === "usage" ? (
+        <UsagePanel />
       ) : (
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
