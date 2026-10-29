@@ -30,16 +30,17 @@ export function context(lead: string) {
   return lead.replace(/^[^.]*\d+\s+(год|года|лет)\.\s*/, "").replace(/(\d) (?=\d{3}\b|₽)/g, "$1\u00a0");
 }
 
-// Grid of patients at full card height, followed by any extra cards (the workspace tools). On desktop it scrolls inside the height its parent gives it, so the rest of the
-// workspace stays on one screen; the padding keeps the hover lift and focus ring from being clipped by the scroll box.
+// Grid of patients followed by any extra cards (the workspace tools). On desktop it is 4×3 and fills the height its parent
+// gives it, so the whole workspace fits one screen; each card shows as much description as its height allows (`fit-*` in globals.css).
 export default function PatientGrid({ children }: { children?: React.ReactNode }) {
   const clinicData = useClinicData();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   useEffect(() => setHistory(getHistory()), []);
 
   return (
-    <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 gap-3 sm:grid-cols-2 lg:-mx-1 lg:grid-cols-3 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pt-1 lg:pb-2 lg:[scrollbar-gutter:stable] lg:[mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-32px),transparent)]">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[repeat(3,minmax(0,1fr))] low:gap-2.5">
       {scenarios.map((s, i) => {
+        const lead = clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "";
         const tries = history.filter((h) => h.scenarioId === s.id);
         const last = tries[tries.length - 1];
         const top = tries.reduce((m, h) => Math.max(m, h.total), 0);
@@ -47,12 +48,13 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
           <Link
             key={s.id}
             href={`/challenge/${s.id}`}
+            title={lead || undefined}
             style={{ animationDelay: `${120 + i * 60}ms` }}
-            className="rise bezel group flex transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
+            className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
           >
-            <article className="bezel-core flex flex-1 flex-col overflow-hidden p-4 transition-colors duration-500 group-hover:bg-ink-700">
+            <article className="fit-card bezel-core flex min-h-0 flex-1 flex-col overflow-hidden p-4 transition-colors lg:p-3.5 low:p-3 duration-500 group-hover:bg-ink-700">
               <header className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-sm font-semibold tracking-tight text-slate-200 ring-1 ring-white/10">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-sm font-semibold lg:h-9 lg:w-9 short:h-8 short:w-8 short:text-xs tracking-tight text-slate-200 ring-1 ring-white/10">
                   {initials(s.name)}
                 </span>
                 <div className="min-w-0 leading-tight">
@@ -69,16 +71,16 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
                 )}
               </header>
 
-              <p className="mt-4 flex items-center gap-1.5 short:mt-3 text-[11px] font-medium text-slate-500">
+              <p className="fit-tag mt-4 flex items-center gap-1.5 text-[11px] font-medium text-slate-500 lg:mt-3">
                 <span className="h-1 w-1 shrink-0 rounded-full bg-accent/70" />
                 <span className="truncate">{s.tag}</span>
               </p>
-              <h3 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50">{quote(s.title)}</h3>
-              <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-pretty text-slate-400">{clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "\u00a0"}</p>
+              <h3 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:line-clamp-2 lg:text-[15px] low:text-sm">{quote(s.title)}</h3>
+              <p className="fit-desc mt-2 line-clamp-3 text-[13px] leading-relaxed text-pretty text-slate-400 lg:mt-1.5 lg:text-[12.5px]">{lead || "\u00a0"}</p>
 
-              <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent">
+              <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 lg:pt-2 transition-colors duration-500 group-hover:text-accent">
                 Позвонить
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] low:h-6 low:w-6 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </span>
               </span>

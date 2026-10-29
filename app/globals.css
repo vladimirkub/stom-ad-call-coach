@@ -2,6 +2,32 @@
 
 /* Laptop screens under ~800px tall: the one-screen workspace tightens its headline and decoration. */
 @custom-variant short (@media (min-width: 64rem) and (max-height: 50rem));
+/* Under ~720px tall (a 1280×720 screen minus browser chrome): the workspace tightens paddings to fit 3 rows of cards. */
+@custom-variant low (@media (min-width: 64rem) and (max-height: 45rem));
+/* From ~900px tall (a 1920×1080 screen): larger type in the workspace's virtual operator card. */
+@custom-variant tall (@media (min-width: 64rem) and (min-height: 56.25rem));
+
+/* Workspace cards on desktop show as many whole lines of description as their own height allows (0 to 3), and the tag
+   only when there is room to spare, so the 4×3 grid fits any screen without cutting text mid-line. On narrower screens
+   the cards are not size containers and show everything. */
+@media (min-width: 64rem) {
+  .fit-card { container-type: size; }
+  .fit-card .fit-desc, .fit-card .fit-tag { display: none; }
+  .fit-card .fit-desc { -webkit-box-orient: vertical; overflow: hidden; }
+}
+/* Measured inside the card's padding (container queries see the content box): with a two-line quote the content needs
+   127px without description (123px on short screens, smaller avatar); each description line adds ~20px plus a 6px gap
+   once; the tag adds ~29px. */
+@container (min-height: 154px) { .fit-card .fit-desc { display: -webkit-box; -webkit-line-clamp: 1; } }
+@container (min-height: 174px) { .fit-card .fit-desc { -webkit-line-clamp: 2; } }
+@container (min-height: 195px) { .fit-card .fit-desc { -webkit-line-clamp: 3; } }
+@container (min-height: 224px) { .fit-card .fit-tag { display: flex; } }
+@media (max-height: 50rem) {
+  @container (min-height: 150px) { .fit-card .fit-desc { display: -webkit-box; -webkit-line-clamp: 1; } }
+  @container (min-height: 170px) { .fit-card .fit-desc { -webkit-line-clamp: 2; } }
+  @container (min-height: 191px) { .fit-card .fit-desc { -webkit-line-clamp: 3; } }
+  @container (min-height: 220px) { .fit-card .fit-tag { display: flex; } }
+}
 
 /* One accent (mint), one cool-tinted neutral family. Used as `text-accent`, `bg-ink-900`, etc. */
 @theme {
