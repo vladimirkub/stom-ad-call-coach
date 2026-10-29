@@ -10,7 +10,7 @@ const TOOLS = [
 ];
 
 // Workspace: everything fits one screen on desktop (nav + headline + bento that fills the height). Below `lg` it stacks and scrolls.
-// The two tools close the patient grid; the virtual operator takes the whole right column.
+// The two tools close the patient grid; the virtual operator lines up with the grid, beside the headline row left empty.
 export default function Workspace() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:h-[max(680px,calc(100dvh-34px))] lg:flex-none lg:overflow-hidden lg:px-6">
@@ -59,7 +59,7 @@ export default function Workspace() {
         </section>
 
         <section aria-label="Виртуальный оператор и база знаний" className="flex min-h-0 flex-col gap-4 lg:col-span-4 lg:row-span-2 lg:grid lg:grid-rows-subgrid">
-          <div className="grid min-h-0 flex-1 gap-3 lg:row-span-2 lg:grid-rows-[1fr_auto]">
+          <div className="grid min-h-0 flex-1 gap-3 lg:row-start-2 lg:grid-rows-[1fr_auto] lg:pt-1 lg:pb-2">
             <Link
               href="/operator"
               className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
