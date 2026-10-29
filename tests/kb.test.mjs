@@ -57,4 +57,5 @@ test("operator prompt injects practices and knows nothing about any patient role
   assert.match(p, /Не отпускай человека на «подумаю»/);
   assert.equal(practicesBlock({ dos: [], avoids: [] }), "");
   assert.match(operatorFirstMessage(), /удобно говорить/);
+  assert.match(operatorFirstMessage(), /«Мастерская Улыбок»/);
 });
