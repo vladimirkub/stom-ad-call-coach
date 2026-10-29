@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth-gate";
 import { PageHeader, Panel, PanelTitle, Shell } from "../ui";
+import { StatsPanel, type StatsView } from "./stats";
 
 type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null };
 type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean };
@@ -17,12 +18,19 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 const accessText = (u: { login: string; password: string | null }) =>
   `Доступ к тренажёру Stom AD\nСсылка: ${window.location.origin}/app\nЛогин: ${u.login}\nПароль: ${u.password ?? ""}`;
 
-// Owner-only: clinics, their trainees with generated logins and passwords. Statistics come in the next step.
+// Owner-only: training statistics, and clinics with their trainees' generated logins and passwords.
 export default function Admin() {
   const auth = useAuth();
+  const [tab, setTab] = useState<"stats" | "access">("stats");
+  const [nav, setNav] = useState<StatsView>({ view: "overview" });
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const go = (v: StatsView) => {
+    setNav(v);
+    setTab("stats");
+    window.scrollTo({ top: 0 });
+  };
 
   const loadClinics = useCallback(async () => {
     try {
@@ -49,10 +57,34 @@ export default function Admin() {
   const clinic = clinics.find((c) => c.id === selected) ?? null;
   return (
     <Shell width="max-w-6xl">
-      <PageHeader eyebrow="Админка" title="Клиники и доступы">
-        Заведите клинику, добавьте её администраторов и отправьте каждому логин и пароль. Статистика по тренировкам появится здесь на следующем шаге.
+      <PageHeader eyebrow="Админка" title={tab === "stats" ? "Статистика тренировок" : "Клиники и доступы"}>
+        {tab === "stats"
+          ? "Кто тренируется, с каким результатом и на чём ошибается. Нажмите на клинику, администратора или звонок, чтобы открыть подробности."
+          : "Заведите клинику, добавьте её администраторов и отправьте каждому логин и пароль."}
       </PageHeader>
+      <div role="tablist" aria-label="Разделы админки" className="mb-5 flex w-fit gap-1 rounded-full bg-white/[0.03] p-1 ring-1 ring-white/[0.07]">
+        {(
+          [
+            ["stats", "Статистика"],
+            ["access", "Клиники и доступы"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => (key === "stats" ? go({ view: "overview" }) : setTab("access"))}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${tab === key ? "bg-accent text-ink-950" : "text-slate-300 hover:bg-white/[0.06]"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {error && <p role="alert" className="alert alert-error mb-4">{error}</p>}
+      {tab === "stats" ? (
+        <StatsPanel nav={nav} go={go} />
+      ) : (
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <Panel delay={90}>
@@ -82,8 +114,9 @@ export default function Admin() {
           </Panel>
           <NewClinic onCreated={async (id) => { await loadClinics(); setSelected(id); }} />
         </div>
-        {clinic ? <ClinicUsers key={clinic.id} clinic={clinic} onChanged={loadClinics} /> : null}
+        {clinic ? <ClinicUsers key={clinic.id} clinic={clinic} onChanged={loadClinics} onStats={() => go({ view: "clinic", id: clinic.id })} /> : null}
       </div>
+      )}
     </Shell>
   );
 }
@@ -133,7 +166,7 @@ function NewClinic({ onCreated }: { onCreated: (id: number) => void }) {
   );
 }
 
-function ClinicUsers({ clinic, onChanged }: { clinic: Clinic; onChanged: () => void }) {
+function ClinicUsers({ clinic, onChanged, onStats }: { clinic: Clinic; onChanged: () => void; onStats: () => void }) {
   const [users, setUsers] = useState<Trainee[]>([]);
   const [form, setForm] = useState({ firstName: "", lastName: "" });
   const [fresh, setFresh] = useState<{ login: string; password: string } | null>(null);
@@ -192,7 +225,12 @@ function ClinicUsers({ clinic, onChanged }: { clinic: Clinic; onChanged: () => v
             <h2 className="mt-1 text-xl font-semibold tracking-tight text-balance">{clinic.legalName}</h2>
             <p className="mt-1 text-xs text-slate-500">Логины: фамилия.{clinic.slug}</p>
           </div>
-          <span className="chip">{clinic.activeUsers ?? 0} активных из {clinic.users}</span>
+          <div className="flex items-center gap-2">
+            <span className="chip">{clinic.activeUsers ?? 0} активных из {clinic.users}</span>
+            <button type="button" onClick={onStats} className="rounded-full px-3 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/40 transition hover:bg-accent/10">
+              Статистика клиники
+            </button>
+          </div>
         </div>
         <form onSubmit={create} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-400">
