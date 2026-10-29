@@ -16,6 +16,9 @@ export async function POST(req: Request) {
     const raw = await gemmaText({
       system: scenario.prompt,
       contents: parsed.data.map((t) => ({ role: t.role === "agent" ? ("model" as const) : ("user" as const), text: t.text })),
+      // A live reply: ~1 s without extended thinking, and the persona prompt already carries the reasoning rules.
+      thinking: "minimal",
+      maxOutputTokens: 400,
     });
     // In voice the patient hangs up with the end_call tool; text mode has no tools, so the model writes the name instead.
     const ended = /\bend_call\b/.test(raw);

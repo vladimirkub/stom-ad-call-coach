@@ -23,6 +23,8 @@ done
 
 # One multiplexed connection: a single login (one password prompt) serves every ssh call below.
 SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=/tmp/stomad-cm-%C" -o ControlPersist=120 -o ServerAliveInterval=15)
+# SSH_KEY=~/.ssh/some_key picks a specific private key instead of your ssh defaults.
+[ -n "${SSH_KEY:-}" ] && SSH_OPTS+=(-i "$SSH_KEY" -o IdentitiesOnly=yes)
 ssh_() { ssh "${SSH_OPTS[@]}" "$@"; }
 
 DIR="${REMOTE_DIR:-stom-ad-call-coach}"

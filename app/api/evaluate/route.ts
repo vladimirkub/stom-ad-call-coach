@@ -50,7 +50,7 @@ ${text}
 </transcript>`;
 
   try {
-    const ev = await gemmaJson({ system: systemPrompt(real), prompt, schema: EvaluationSchema });
+    const ev = await gemmaJson({ system: systemPrompt(real), prompt, schema: EvaluationSchema, tier: "smart" });
 
     const passed = new Set(ev.passed);
     const notes = new Map(ev.missed.map((m) => [m.id, m.note]));

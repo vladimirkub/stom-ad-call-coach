@@ -44,8 +44,8 @@ The domain knowledge is how an outbound lead call in a dental call center should
 The checklist, personas and playbook are authored from call-center practice for lead callbacks (the facts in `clinic.json` come from a public clinic website, de-identified). They are not clinical guidance.
 
 ## The model and its license
-- **Gemma 4** `gemma-4-26b-a4b-it` (open weights, **Apache 2.0**) through the **Gemini API** (`@google/genai`). Model card and license: <https://huggingface.co/google/gemma-4-26B-A4B-it>. Override with `GEMMA_MODEL` (e.g. `gemma-4-31b-it`).
-- Gemma does: call evaluation (21-criterion checklist), model conversation scripts, knowledge-base learning, and the text-mode AI patient. Integration: `lib/gemma.ts`.
+- **Gemini** through the **Gemini API** (`@google/genai`, billed project): `gemini-3.5-flash-lite` for live turns (text-mode AI patient, live checklist), `gemini-3.6-flash` for call evaluation (21-criterion checklist), model conversation scripts and knowledge-base learning, and `gemini-3.1-flash-lite` as the fallback when a model is overloaded. Override with `GEMINI_MODEL`, `GEMINI_SMART_MODEL`, `GEMINI_FALLBACK_MODEL`. Integration: `lib/gemma.ts`.
+- Earlier versions ran on Gemma 4 (`gemma-4-26b-a4b-it`, Apache 2.0). Gemma has no paid tier in the Gemini API, and its free-tier limit (16k input tokens/min) failed with a few concurrent trainees.
 - **ElevenLabs** (closed, used as the voice layer): Agents for the six AI patients and the virtual operator, Scribe v2 speech-to-text for uploaded and CRM recordings, Voice Library voices.
 - The dialogue brain *inside* the ElevenLabs voice agents is `gemini-2.5-flash` (a closed model, configurable with `ELEVENLABS_LLM`). Evaluation, learning and the text fallback do not depend on it.
 

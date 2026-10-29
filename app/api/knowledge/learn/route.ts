@@ -66,7 +66,7 @@ ${text}
 </transcript>`;
 
   try {
-    const learning = await gemmaJson({ system: SYSTEM, prompt, schema: LearningSchema });
+    const learning = await gemmaJson({ system: SYSTEM, prompt, schema: LearningSchema, tier: "smart" });
     // A call with false claims may only teach what to avoid, never "do" entries.
     const allowDo = r.unsupportedClaims.length === 0;
     const out = await updateKb((kb) => {

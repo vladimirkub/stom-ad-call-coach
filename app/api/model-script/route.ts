@@ -59,7 +59,7 @@ ${text}
 </transcript>`;
 
   try {
-    const script = await gemmaJson({ system: SYSTEM, prompt, schema: ModelScriptSchema });
+    const script = await gemmaJson({ system: SYSTEM, prompt, schema: ModelScriptSchema, tier: "smart" });
     return NextResponse.json(script);
   } catch (e) {
     console.error("[model-script]", e);
