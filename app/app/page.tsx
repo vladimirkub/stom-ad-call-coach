@@ -10,6 +10,7 @@ const TOOLS = [
 ];
 
 // Workspace: everything fits one screen on desktop (nav + headline + bento that fills the height). Below `lg` it stacks and scrolls.
+// The two tools close the patient grid; the virtual operator takes the whole right column.
 export default function Workspace() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:h-[max(680px,calc(100dvh-34px))] lg:flex-none lg:overflow-hidden lg:px-6">
@@ -31,36 +32,34 @@ export default function Workspace() {
             </div>
             <PatientStats />
           </header>
-          <PatientGrid />
+          <PatientGrid>
+            {TOOLS.map((t, i) => (
+              <Link
+                key={t.href}
+                href={t.href}
+                style={{ animationDelay: `${720 + i * 60}ms` }}
+                className="rise group flex rounded-[1.5rem] bg-accent/[0.06] p-[0.3125rem] ring-1 ring-inset ring-accent/30 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 hover:ring-accent/60 active:scale-[0.99]"
+              >
+                <article className="bezel-core flex flex-1 flex-col p-4 transition-colors duration-500 group-hover:bg-ink-700">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-ink-950">
+                    <t.Icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50">{t.title}</h3>
+                  <p className="mt-2 text-[13px] leading-relaxed text-pretty text-slate-400">{t.text}</p>
+                  <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent">
+                    Открыть
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </span>
+                  </span>
+                </article>
+              </Link>
+            ))}
+          </PatientGrid>
         </section>
 
-        <section aria-label="Инструменты и виртуальный оператор" className="flex min-h-0 flex-col gap-4 lg:col-span-4 lg:row-span-2 lg:grid lg:grid-rows-subgrid">
-          <div className="rise self-end" style={{ animationDelay: "90ms" }}>
-            <div className="grid grid-cols-2 gap-3">
-              {TOOLS.map((t) => (
-                <Link
-                  key={t.href}
-                  href={t.href}
-                  className="group flex rounded-[1.5rem] bg-accent/[0.06] p-[0.3125rem] ring-1 ring-inset ring-accent/30 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 hover:ring-accent/60 active:scale-[0.99]"
-                >
-                  <div className="bezel-core flex flex-1 flex-col gap-2.5 p-3.5 transition-colors duration-500 group-hover:bg-ink-700 short:gap-2 short:p-3">
-                    <div className="flex items-start justify-between">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-ink-950 short:h-8 short:w-8">
-                        <t.Icon className="h-[18px] w-[18px]" />
-                      </span>
-                      <ArrowUpRight className="h-4 w-4 text-slate-500 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent" />
-                    </div>
-                    <div>
-                      <h2 className="text-[15px] font-semibold leading-snug tracking-tight text-balance text-slate-50">{t.title}</h2>
-                      <p className="mt-0.5 text-xs leading-snug text-pretty text-slate-400 short:hidden">{t.text}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-rows-[1fr_auto]">
+        <section aria-label="Виртуальный оператор и база знаний" className="flex min-h-0 flex-col gap-4 lg:col-span-4 lg:row-span-2 lg:grid lg:grid-rows-subgrid">
+          <div className="grid min-h-0 flex-1 gap-3 lg:row-span-2 lg:grid-rows-[1fr_auto]">
             <Link
               href="/operator"
               className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"

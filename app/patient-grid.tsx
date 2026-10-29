@@ -30,14 +30,15 @@ export function context(lead: string) {
   return lead.replace(/^[^.]*\d+\s+(год|года|лет)\.\s*/, "").replace(/(\d) (?=\d{3}\b|₽)/g, "$1\u00a0");
 }
 
-// Compact 3x2 grid of patients that fills the height its parent gives it (no scrolling on desktop).
-export default function PatientGrid() {
+// Grid of patients at full card height, followed by any extra cards (the workspace tools). On desktop it scrolls inside the height its parent gives it, so the rest of the
+// workspace stays on one screen; the padding keeps the hover lift and focus ring from being clipped by the scroll box.
+export default function PatientGrid({ children }: { children?: React.ReactNode }) {
   const clinicData = useClinicData();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   useEffect(() => setHistory(getHistory()), []);
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2">
+    <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-1 gap-3 sm:grid-cols-2 lg:-mx-1 lg:grid-cols-3 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pt-1 lg:pb-2 lg:[scrollbar-gutter:stable] lg:[mask-image:linear-gradient(to_bottom,transparent,black_8px,black_calc(100%-32px),transparent)]">
       {scenarios.map((s, i) => {
         const tries = history.filter((h) => h.scenarioId === s.id);
         const last = tries[tries.length - 1];
@@ -47,9 +48,9 @@ export default function PatientGrid() {
             key={s.id}
             href={`/challenge/${s.id}`}
             style={{ animationDelay: `${120 + i * 60}ms` }}
-            className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
+            className="rise bezel group flex transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
           >
-            <article className="bezel-core flex min-h-0 flex-1 flex-col overflow-hidden p-4 transition-colors duration-500 group-hover:bg-ink-700">
+            <article className="bezel-core flex flex-1 flex-col overflow-hidden p-4 transition-colors duration-500 group-hover:bg-ink-700">
               <header className="flex items-center gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-sm font-semibold tracking-tight text-slate-200 ring-1 ring-white/10">
                   {initials(s.name)}
@@ -73,7 +74,7 @@ export default function PatientGrid() {
                 <span className="truncate">{s.tag}</span>
               </p>
               <h3 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50">{quote(s.title)}</h3>
-              <p className="mt-2 line-clamp-3 text-[13px] short:line-clamp-1 leading-relaxed text-pretty text-slate-400">{clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "\u00a0"}</p>
+              <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-pretty text-slate-400">{clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "\u00a0"}</p>
 
               <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent">
                 Позвонить
@@ -85,6 +86,7 @@ export default function PatientGrid() {
           </Link>
         );
       })}
+      {children}
     </div>
   );
 }
