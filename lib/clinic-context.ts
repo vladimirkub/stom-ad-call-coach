@@ -1,4 +1,4 @@
-// What a training knows about the trainee's clinic: the operator memo, the facts the patients "read", and the six
+// What a training knows about the trainee's clinic: the operator memo, the facts the patients "read", and the
 // patients adapted to its services, prices and offers. Built from the clinic's approved legend; without one (or for the
 // owner) it is the shared demo clinic from clinic.json and the default personas.
 import pub from "./scenarios-public.json" with { type: "json" };
@@ -7,7 +7,7 @@ import clinic from "./clinic.json" with { type: "json" };
 import { db } from "./db.ts";
 import { SECTIONS, type Fact } from "./legend.ts";
 
-export type PersonaFit = { lead: string; situation: string; concerns: string; hiddenObjection: string; showUpRisk: string };
+export type PersonaFit = { lead: string; situation: string; concerns: string; hiddenObjection: string; showUpRisk: string; direction?: string };
 export type ClinicContext = {
   clinicId: number | null;
   legendVersion: number | null;

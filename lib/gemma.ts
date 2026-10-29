@@ -40,6 +40,8 @@ export async function gemmaText(opts: {
   /** Thinking tokens count against the output budget, so long JSON can be cut off without an explicit limit. */
   maxOutputTokens?: number;
   tier?: Tier;
+  /** Ask the API for strict JSON (no markdown, quotes escaped); the caller still validates the shape. */
+  json?: boolean;
 }) {
   const ai = client();
   let lastError: unknown;
@@ -52,6 +54,7 @@ export async function gemmaText(opts: {
           systemInstruction: opts.system,
           ...(opts.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
           ...(opts.thinking === "minimal" ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } } : {}),
+          ...(opts.json ? { responseMimeType: "application/json" } : {}),
         },
       });
       const text = answerText(response).trim();
@@ -67,7 +70,7 @@ export async function gemmaText(opts: {
   throw lastError;
 }
 
-/** We ask for JSON in the prompt, extract it, and validate with Zod. */
+/** JSON mode returns a bare object; older answers may still wrap it in a markdown fence, so extract before parsing. */
 export function extractJson(raw: string): unknown {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const body = fenced ? fenced[1] : raw;
@@ -86,6 +89,8 @@ export async function gemmaJson<T>(opts: { system: string; prompt: string; schem
       contents: [{ role: "user", text: prompt }],
       maxOutputTokens: opts.maxOutputTokens ?? 16384,
       tier: opts.tier,
+      // Prompt-only JSON broke on unescaped quotes inside Russian text (e.g. "Все зубы за 1 день"); JSON mode prevents that.
+      json: true,
       // Minimal thinking by default: on gemini-3.6-flash evaluations took 3-8 s instead of 10-31 s and scored the six
       // benchmark calls as before (strong 90-94, medium 25-32, weak 0). GEMINI_JSON_THINKING=on restores full thinking.
       thinking: opts.thinking ?? (process.env.GEMINI_JSON_THINKING === "on" ? "default" : "minimal"),

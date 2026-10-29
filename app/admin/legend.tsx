@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import scenarios from "@/lib/scenarios-public.json";
 import { Panel, PanelTitle } from "../ui";
 
 // The owner's editor for one clinic's legend: its websites, the analysis that drafts facts from them, the draft
@@ -20,8 +21,9 @@ type State = {
   history: { id: number; version: number; approvedAt: number; facts: number; status: string }[];
   changes: { added: string[]; removed: Fact[] } | null;
   patients: { status: "pending" | "ready" | "failed" | null; error: string | null; personas: Record<string, Fit> } | null;
+  directions: { options: { key: string; label: string; hint: string }[]; selected: string[]; suggested: string[]; plan: Record<string, string> };
 };
-type Fit = { lead: string; situation: string; concerns: string };
+type Fit = { lead: string; situation: string; concerns: string; direction?: string };
 
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 const shortUrl = (u: string) => {
@@ -49,6 +51,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
   const [state, setState] = useState<State | null>(null);
   const [sites, setSites] = useState<{ url: string; label: string }[]>([]);
   const [offers, setOffers] = useState("");
+  const [directions, setDirections] = useState<string[]>([]);
   const [facts, setFacts] = useState<Fact[]>([]);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
@@ -59,6 +62,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
     setState(s);
     setSites(s.sites.length ? s.sites : [{ url: "", label: "Официальный сайт" }]);
     setOffers(s.offers);
+    setDirections(s.directions.selected);
     if (!keepEdits) {
       setFacts(s.working?.status === "draft" ? s.working.facts : []);
       setDirty(false);
@@ -115,6 +119,9 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
   const draft = working?.status === "draft";
   const hasSources = state.sites.length > 0 || state.offers.length > 0;
   const sourceLabel = (u: string) => (u === state.offersSource ? "текст офферов" : shortUrl(u));
+  const directionLabel = (key?: string) => state.directions.options.find((o) => o.key === key)?.label;
+  const directionsChanged = directions.join() !== state.directions.selected.join();
+  const patientName = (id: string) => scenarios.find((s) => s.id === id)?.short ?? id;
   const added = new Set(changes?.added ?? []);
   const edit = (i: number, patch: Partial<Fact>) => {
     setFacts((fs) => fs.map((f, j) => (j === i ? { ...f, ...patch } : f)));
@@ -332,13 +339,64 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
         </Panel>
       )}
 
+      <Panel>
+        <PanelTitle>Направления клиники</PanelTitle>
+        <p className="mt-1 mb-4 text-xs text-pretty text-slate-500">
+          По каким направлениям клиника работает с пациентами из рекламы. Шесть пациентов распределятся между ними по возрасту и характеру, и на каждое
+          направление придёт хотя бы один. Без отметок пациенты остаются со своими исходными историями.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {state.directions.options.map((o) => {
+            const on = directions.includes(o.key);
+            const hinted = state.directions.suggested.includes(o.key);
+            return (
+              <label key={o.key} className={`flex cursor-pointer gap-3 rounded-xl p-3 ring-1 ring-inset transition ${on ? "bg-accent/10 ring-accent/40" : "bg-ink-950/50 ring-white/[0.06] hover:ring-white/15"}`}>
+                <input
+                  id={`dir-${o.key}`}
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+                  checked={on}
+                  onChange={(e) => setDirections(e.target.checked ? [...directions, o.key] : directions.filter((d) => d !== o.key))}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm text-slate-100">
+                    {o.label}
+                    {hinted && <span className="chip ml-2 bg-accent/15 text-accent">есть в легенде</span>}
+                  </span>
+                  <span className="block text-xs text-slate-500">{o.hint}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" className="btn btn-primary px-4 py-2 text-xs" disabled={!!busy || !directionsChanged} onClick={() => run("directions", { action: "directions", directions }, approved ? "Направления сохранены, пациенты пересобираются" : "Направления сохранены")}>
+            Сохранить направления
+          </button>
+          {state.directions.suggested.length > 0 && state.directions.suggested.join() !== directions.join() && (
+            <button type="button" className="btn btn-ghost px-4 py-2 text-xs" onClick={() => setDirections(state.directions.suggested)}>
+              Отметить по легенде
+            </button>
+          )}
+        </div>
+        {state.directions.selected.length > 0 && (
+          <p className="mt-3 text-xs text-pretty text-slate-400">
+            Кто за чем придёт:{" "}
+            {Object.entries(state.directions.plan)
+              .map(([id, d]) => `${patientName(id)} — ${directionLabel(d)?.toLowerCase()}`)
+              .join(", ")}
+            .
+          </p>
+        )}
+      </Panel>
+
       {approved && state.patients && (
         <Panel>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <PanelTitle>Пациенты под эту клинику</PanelTitle>
               <p className="mt-1 text-xs text-pretty text-slate-500">
-                Те же шесть характеров, но с услугами, ценами и акциями из легенды. Подстраиваются после каждого утверждения.
+                Те же характеры, но с услугами, ценами и акциями из легенды. Подстраиваются после каждого утверждения.
               </p>
             </div>
             <button type="button" className="btn btn-ghost px-4 py-2 text-xs" disabled={!!busy || fitting} onClick={() => run("refit", { action: "refit" })}>
@@ -356,6 +414,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {Object.entries(state.patients.personas).map(([id, p]) => (
                 <li key={id} className="rounded-xl bg-ink-950/50 p-3 ring-1 ring-inset ring-white/[0.06]">
+                  {p.direction && <span className="chip mb-1.5 bg-accent/15 text-accent">{directionLabel(p.direction)}</span>}
                   <p className="text-sm text-slate-200">{p.lead}</p>
                   <details className="mt-2 text-xs text-slate-400">
                     <summary className="cursor-pointer text-slate-500 hover:text-slate-300">Ситуация и вопросы</summary>

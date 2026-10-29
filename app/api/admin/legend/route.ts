@@ -5,6 +5,7 @@ import {
   setSites, startAnalysis, workingLegend,
 } from "@/lib/legend";
 import { personaFitState, startPersonaFit } from "@/lib/persona-fit";
+import { DIRECTIONS, assignDirections, getDirections, setDirections, suggestDirections } from "@/lib/directions";
 
 function state(clinicId: number) {
   expireStaleAnalyses();
@@ -20,6 +21,12 @@ function state(clinicId: number) {
     history: legendHistory(clinicId),
     changes: approved && working?.status === "draft" ? compareFacts(working.facts, approved.facts) : null,
     patients: personaFitState(clinicId),
+    directions: {
+      options: DIRECTIONS.map(({ key, label, hint }) => ({ key, label, hint })),
+      selected: getDirections(clinicId),
+      suggested: suggestDirections((working?.status === "draft" ? working : approved)?.facts ?? []),
+      plan: assignDirections(getDirections(clinicId)),
+    },
   };
 }
 
@@ -56,11 +63,16 @@ export async function POST(req: Request) {
         break;
       case "approve":
         approveDraft(clinicId, body.facts);
-        // The six patients are refitted to every new version in the background.
+        // All patients are refitted to every new version in the background.
         startPersonaFit(clinicId);
         break;
       case "refit":
         startPersonaFit(clinicId);
+        break;
+      case "directions":
+        setDirections(clinicId, body.directions);
+        // New directions change who comes for what: refit right away if the clinic already has an approved legend.
+        if (approvedLegend(clinicId)) startPersonaFit(clinicId);
         break;
       case "discard":
         discardDraft(clinicId);
