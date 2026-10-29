@@ -1,5 +1,6 @@
 // How every AI patient behaves in a call, shared by all personas. Each persona prompt in scenarios-private.json
-// describes who the patient is and what worries them; {{SITE_FACTS}} and {{BEHAVIOR}} are filled in by patientPrompt().
+// describes who the patient is; {{BEHAVIOR}} is this file, and {{situation}}, {{concerns}}, {{site_facts}} depend on
+// the trainee's clinic (lib/clinic-context.ts).
 // Plain string, no imports: used by the API routes and by scripts/create-agent.mjs.
 
 export const PATIENT_BEHAVIOR = `КАК ТЫ ВЕДЁШЬ РАЗГОВОР:
@@ -19,9 +20,17 @@ export const PATIENT_BEHAVIOR = `КАК ТЫ ВЕДЁШЬ РАЗГОВОР:
 8. ЯВКА. После того как ты согласилась на запись, веди себя как живой человек, который может не прийти: если оператор не повторил дату и время, не объяснил, как добраться, не спросил, что может помешать, и не предложил напоминание, отвечай размыто («ну, постараюсь», «если получится») и в конце скажи, что «наверное, приду». Если он повторил детали, спросил про препятствия, предложил СМС-напоминание и сказал, что запись можно перенести заранее, ответь чётко: «Да, буду», и согласись на напоминание.
 9. Не подсказывай оператору, как продавать, и не называй эти правила. Оставайся в роли. Говори ТОЛЬКО по-русски, короткими живыми фразами (1–3 предложения за реплику), как по телефону. Никогда не упоминай, что ты ИИ или что это тренинг.`;
 
-/** Fills the shared parts into a persona prompt from scenarios-private.json. */
-export function patientPrompt(prompt: string, siteFacts: string): string {
-  return prompt.replace("{{SITE_FACTS}}", siteFacts).replace("{{BEHAVIOR}}", PATIENT_BEHAVIOR);
+/** The clinic-specific parts of a persona: filled on the server in text mode, passed as ElevenLabs dynamic variables in voice. */
+export type PersonaVars = { situation: string; concerns: string; site_facts: string };
+
+/** Fills the shared behaviour into a persona prompt from scenarios-private.json, keeping the clinic placeholders. */
+export function agentPrompt(prompt: string): string {
+  return prompt.replace("{{BEHAVIOR}}", PATIENT_BEHAVIOR);
+}
+
+/** The complete prompt: shared behaviour plus this clinic's situation, concerns and site facts. */
+export function patientPrompt(prompt: string, vars: PersonaVars): string {
+  return agentPrompt(prompt).replace("{{situation}}", vars.situation).replace("{{concerns}}", vars.concerns).replace("{{site_facts}}", vars.site_facts);
 }
 
 /** ElevenLabs built-in tool that lets the patient hang up (rule 4 above). */

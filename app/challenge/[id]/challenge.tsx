@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
+import { useClinicData } from "../../clinic-data";
 import scenarios from "@/lib/scenarios-public.json";
-import clinic from "@/lib/clinic.json";
 import { startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
 import { Shell, Panel } from "../../ui";
@@ -25,6 +25,7 @@ export default function Challenge({ id }: { id: string }) {
 
 function Call({ id }: { id: string }) {
   const scenario = scenarios.find((s) => s.id === id)!;
+  const clinicData = useClinicData();
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("idle");
   const [transcript, setTranscript] = useState<Turn[]>([]);
@@ -172,7 +173,7 @@ function Call({ id }: { id: string }) {
       <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
         <Panel delay={100} innerClassName="h-full p-4">
           <p className="text-xs font-medium text-slate-500">Карточка заявки</p>
-          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">{context(scenario.lead)}</p>
+          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">{clinicData ? context(clinicData.leads[id] ?? scenario.lead) : "\u00a0"}</p>
         </Panel>
         <Panel delay={140} tone="accent" innerClassName="h-full p-4">
           <p className="flex items-center gap-1.5 text-xs font-medium text-accent"><Target className="h-3.5 w-3.5" />Ваша цель</p>
@@ -186,7 +187,7 @@ function Call({ id }: { id: string }) {
           <div className="bezel sticky top-4">
             <div className="bezel-core max-h-[calc(100dvh-2.6rem)] overflow-y-auto p-4">
               <p className="flex items-center gap-2 text-sm font-medium text-slate-100"><Book className="h-4 w-4 text-accent" />Памятка оператора: что известно о клинике</p>
-              <Memo className="mt-3 text-[13px]" />
+              <Memo memo={clinicData?.memo} className="mt-3 text-[13px]" />
             </div>
           </div>
         </aside>
@@ -196,7 +197,7 @@ function Call({ id }: { id: string }) {
             <span className="text-xs text-slate-500 group-open:hidden">Открыть</span>
             <span className="hidden text-xs text-slate-500 group-open:inline">Свернуть</span>
           </summary>
-          <Memo className="mt-3" />
+          <Memo memo={clinicData?.memo} className="mt-3" />
         </details>
         <details className="rise group rounded-2xl bg-white/[0.03] p-4 text-sm ring-1 ring-inset ring-white/[0.06] lg:hidden" style={{ animationDelay: "200ms" }}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-slate-200">
@@ -298,10 +299,11 @@ function Call({ id }: { id: string }) {
   );
 }
 
-function Memo({ className = "" }: { className?: string }) {
+function Memo({ memo, className = "" }: { memo?: string[]; className?: string }) {
+  if (!memo) return <p className={`text-slate-500 ${className}`}>Загружаем памятку клиники…</p>;
   return (
     <ul className={`space-y-2 text-slate-300 ${className}`}>
-      {clinic.memo.map((m, i) => (
+      {memo.map((m, i) => (
         <li key={i} className="flex gap-2.5 leading-relaxed"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent/70" />{m}</li>
       ))}
     </ul>

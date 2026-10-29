@@ -4,6 +4,7 @@ import {
   OFFERS_SOURCE, SECTIONS, approveDraft, approvedLegend, compareFacts, discardDraft, expireStaleAnalyses, getOffers, getSites, legendHistory, saveDraft, setOffers,
   setSites, startAnalysis, workingLegend,
 } from "@/lib/legend";
+import { personaFitState, startPersonaFit } from "@/lib/persona-fit";
 
 function state(clinicId: number) {
   expireStaleAnalyses();
@@ -18,6 +19,7 @@ function state(clinicId: number) {
     working,
     history: legendHistory(clinicId),
     changes: approved && working?.status === "draft" ? compareFacts(working.facts, approved.facts) : null,
+    patients: personaFitState(clinicId),
   };
 }
 
@@ -54,6 +56,11 @@ export async function POST(req: Request) {
         break;
       case "approve":
         approveDraft(clinicId, body.facts);
+        // The six patients are refitted to every new version in the background.
+        startPersonaFit(clinicId);
+        break;
+      case "refit":
+        startPersonaFit(clinicId);
         break;
       case "discard":
         discardDraft(clinicId);

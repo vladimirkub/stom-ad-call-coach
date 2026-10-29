@@ -85,6 +85,12 @@ export function db(): DatabaseSync {
     const clinicCols = conn.prepare("PRAGMA table_info(clinics)").all() as { name: string }[];
     if (!clinicCols.some((c) => c.name === "sites")) conn.exec("ALTER TABLE clinics ADD COLUMN sites TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
+    const legendCols = conn.prepare("PRAGMA table_info(legends)").all() as { name: string }[];
+    if (!legendCols.some((c) => c.name === "personas")) {
+      conn.exec("ALTER TABLE legends ADD COLUMN personas TEXT NOT NULL DEFAULT '{}'");
+      conn.exec("ALTER TABLE legends ADD COLUMN personas_status TEXT");
+      conn.exec("ALTER TABLE legends ADD COLUMN personas_error TEXT");
+    }
     g.__coachDb = conn;
   }
   return g.__coachDb;

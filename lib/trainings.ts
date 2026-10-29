@@ -27,6 +27,8 @@ export function saveTraining(t: {
   userId: number;
   clinicId: number | null;
   scenarioId: string;
+  /** Version of the clinic legend the call ran on; null for the shared demo clinic. */
+  legendVersion?: number | null;
   transcript: Turn[];
   result: EvaluationResult;
   now?: number;
@@ -37,7 +39,7 @@ export function saveTraining(t: {
     .prepare(
       `INSERT INTO trainings (id, user_id, clinic_id, scenario_id, mode, legend_version, started_at, duration_s, ended_by,
          transcript, live_checklist, scores, total, booked, evaluation, evaluated_at)
-       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET transcript = excluded.transcript, live_checklist = excluded.live_checklist,
          scores = excluded.scores, total = excluded.total, booked = excluded.booked, evaluation = excluded.evaluation,
          duration_s = excluded.duration_s, ended_by = excluded.ended_by, evaluated_at = excluded.evaluated_at
@@ -49,6 +51,7 @@ export function saveTraining(t: {
       t.clinicId,
       t.scenarioId,
       attempt.mode,
+      t.legendVersion == null ? null : String(t.legendVersion),
       attempt.startedAt,
       Math.max(0, Math.round((now - attempt.startedAt) / 1000)),
       attempt.endedBy,

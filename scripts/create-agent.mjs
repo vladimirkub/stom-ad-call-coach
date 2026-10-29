@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { FAST_PROMPT, FAST_TURN, OPERATOR_TTS, PATIENT_LLM_OVERRIDES, PATIENT_TTS_OVERRIDES } from "../lib/voice-config.ts";
 import { OPERATOR_VOICE_ID, operatorFirstMessage, operatorPromptConfig } from "../lib/operator.ts";
-import { END_CALL_TOOL, patientPrompt } from "../lib/patient-behavior.ts";
+import { END_CALL_TOOL, agentPrompt } from "../lib/patient-behavior.ts";
 
 const apiKey = process.env.ELEVENLABS_API_KEY;
 if (!apiKey) {
@@ -29,8 +29,11 @@ const jobs = pub.map((s) => {
       agent: {
         first_message: s.firstMessage,
         language: "ru",
+        // {{situation}}, {{concerns}} and {{site_facts}} are filled per call for the trainee's clinic (/api/signed-url);
+        // these defaults are the shared demo clinic, used when a call passes nothing.
+        dynamic_variables: { dynamic_variable_placeholders: { situation: p.situation, concerns: p.concerns, site_facts: clinic.promptFacts } },
         prompt: {
-          prompt: patientPrompt(p.prompt, clinic.promptFacts),
+          prompt: agentPrompt(p.prompt),
           llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash",
           ...FAST_PROMPT,
           ...PATIENT_LLM_OVERRIDES[s.id],

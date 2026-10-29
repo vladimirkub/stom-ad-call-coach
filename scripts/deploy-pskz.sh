@@ -89,6 +89,8 @@ After=network.target
 WorkingDirectory=$APP_DIR
 ExecStart=$APP_DIR/node_modules/.bin/next start -H 127.0.0.1 -p $PORT
 Restart=on-failure
+# next start exits with 143 on SIGTERM; that is a normal stop, not a failure
+SuccessExitStatus=143
 EnvironmentFile=/etc/stom-ad-call-coach.env
 Environment=NODE_ENV=production
 # ps.kz has no working IPv6 route to Google: DNS returns the AAAA record first and connects hang for 10 s

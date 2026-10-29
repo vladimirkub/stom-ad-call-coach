@@ -4,7 +4,7 @@ import { agentIdFor, conversationTokenFor, signedUrlFor } from "@/lib/agents";
 import { FAST_TURN } from "@/lib/voice-config";
 import { loadKb, selectPractices } from "@/lib/kb";
 import { operatorFirstMessage, operatorPromptConfig } from "@/lib/operator";
-import clinic from "@/lib/clinic.json";
+import { currentClinicContext } from "@/lib/session";
 
 /**
  * Starts a call from the virtual operator. Before every call the agent's instructions are rebuilt from the
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
   try {
     const practices = selectPractices(await loadKb());
+    const { memo } = await currentClinicContext();
     const res = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
       method: "PATCH",
       headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
           agent: {
             first_message: operatorFirstMessage(),
             language: "ru",
-            prompt: operatorPromptConfig({ memo: clinic.memo, practices }),
+            prompt: operatorPromptConfig({ memo, practices }),
           },
         },
       }),

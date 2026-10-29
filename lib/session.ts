@@ -2,9 +2,15 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, SESSION_DAYS, sessionUser, type SessionUser } from "./auth.ts";
+import { clinicContext } from "./clinic-context.ts";
 
 export async function currentUser(): Promise<SessionUser | null> {
   return sessionUser((await cookies()).get(SESSION_COOKIE)?.value);
+}
+
+/** The signed-in user's clinic as trainings see it (legend, memo, fitted patients). */
+export async function currentClinicContext() {
+  return clinicContext((await currentUser())?.clinic?.id ?? null);
 }
 
 /** For admin routes: the owner, or a ready 401/403 response to return. */

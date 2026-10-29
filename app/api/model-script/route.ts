@@ -4,7 +4,7 @@ import { ModelScriptSchema, ScoresInputSchema, TranscriptSchema } from "@/lib/sc
 import { gemmaJson } from "@/lib/gemma";
 import { SKILLS } from "@/lib/scoring";
 import { getScenario } from "@/lib/scenarios";
-import clinic from "@/lib/clinic.json";
+import { currentClinicContext } from "@/lib/session";
 
 const SYSTEM = `Ты — опытный тренер колл-центра стоматологической клиники. Ты пишешь ЭТАЛОННЫЙ разговор: как сильный оператор перезванивает пациенту, оставившему заявку, отрабатывает его возражения, записывает на приём и делает так, чтобы пациент пришёл.
 Жёсткие правила:
@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   const limited = rateLimit(req, "llm", 12);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
-  const scenario = getScenario(body?.scenarioId);
+  const ctx = await currentClinicContext();
+  const scenario = getScenario(body?.scenarioId, ctx);
   const transcript = TranscriptSchema.safeParse(body?.transcript);
   const scores = ScoresInputSchema.safeParse(body?.scores);
   if (!scenario || !transcript.success || !scores.success) {
@@ -52,7 +53,7 @@ ${list(body?.improvements) || "- нет данных"}
 Раскрыл ли оператор скрытую причину: ${body?.objectionUncovered ? "да" : "нет"}
 
 Факты с сайта клиники:
-${clinic.memo.map((m) => `- ${m}`).join("\n")}
+${ctx.memo.map((m) => `- ${m}`).join("\n")}
 
 <transcript>
 ${text}

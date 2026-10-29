@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import scenarios from "@/lib/scenarios-public.json";
 import { getHistory, type HistoryEntry } from "@/lib/history";
 import { ArrowUpRight } from "./icons";
+import { useClinicData } from "./clinic-data";
 
 export function years(n: number) {
   const d = n % 10, dd = n % 100;
@@ -31,6 +32,7 @@ export function context(lead: string) {
 
 // Compact 3x2 grid of patients that fills the height its parent gives it (no scrolling on desktop).
 export default function PatientGrid() {
+  const clinicData = useClinicData();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   useEffect(() => setHistory(getHistory()), []);
 
@@ -71,7 +73,7 @@ export default function PatientGrid() {
                 <span className="truncate">{s.tag}</span>
               </p>
               <h3 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50">{quote(s.title)}</h3>
-              <p className="mt-2 line-clamp-3 text-[13px] short:line-clamp-1 leading-relaxed text-pretty text-slate-400">{context(s.lead)}</p>
+              <p className="mt-2 line-clamp-3 text-[13px] short:line-clamp-1 leading-relaxed text-pretty text-slate-400">{clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "\u00a0"}</p>
 
               <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent">
                 Позвонить

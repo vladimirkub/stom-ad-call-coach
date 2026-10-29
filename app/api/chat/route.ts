@@ -3,13 +3,14 @@ import { rateLimit } from "@/lib/ratelimit";
 import { TranscriptSchema } from "@/lib/schemas";
 import { gemmaText } from "@/lib/gemma";
 import { getScenario } from "@/lib/scenarios";
+import { currentClinicContext } from "@/lib/session";
 
 /** Text-mode fallback: Gemma plays the same patient persona. */
 export async function POST(req: Request) {
   const limited = rateLimit(req, "chat", 40);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
-  const scenario = getScenario(body?.scenarioId);
+  const scenario = getScenario(body?.scenarioId, await currentClinicContext());
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   try {

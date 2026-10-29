@@ -4,8 +4,7 @@ import { EvaluationSchema, TranscriptSchema, type EvaluationResult } from "@/lib
 import { gemmaJson } from "@/lib/gemma";
 import { rubricFor, skillScores, totalScore, type ChecklistItem } from "@/lib/scoring";
 import { getScenario } from "@/lib/scenarios";
-import clinic from "@/lib/clinic.json";
-import { currentUser } from "@/lib/session";
+import { currentClinicContext, currentUser } from "@/lib/session";
 import { parseAttempt, saveTraining } from "@/lib/trainings";
 
 function systemPrompt(real: boolean) {
@@ -28,7 +27,8 @@ export async function POST(req: Request) {
   if (limited) return limited;
   const body = await req.json().catch(() => null);
   const real = body?.scenarioId === "real";
-  const scenario = real ? null : getScenario(body?.scenarioId);
+  const ctx = await currentClinicContext();
+  const scenario = real ? null : getScenario(body?.scenarioId, ctx);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if ((!real && !scenario) || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   const transcript = parsed.data;
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   const prompt = `${context}
 
 Факты с сайта клиники:
-${clinic.memo.map((m) => `- ${m}`).join("\n")}
+${ctx.memo.map((m) => `- ${m}`).join("\n")}
 
 <transcript>
 ${text}
@@ -85,7 +85,7 @@ ${text}
     const attempt = scenario ? parseAttempt(body?.attempt) : null;
     const user = attempt ? await currentUser() : null;
     if (attempt && user && scenario) {
-      saveTraining({ attempt, userId: user.id, clinicId: user.clinic?.id ?? null, scenarioId: scenario.id, transcript, result });
+      saveTraining({ attempt, userId: user.id, clinicId: user.clinic?.id ?? null, scenarioId: scenario.id, legendVersion: ctx.legendVersion, transcript, result });
     }
     return NextResponse.json(result);
   } catch (e) {

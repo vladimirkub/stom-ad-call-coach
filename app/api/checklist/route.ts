@@ -5,7 +5,7 @@ import { TranscriptSchema } from "@/lib/schemas";
 import { gemmaJson } from "@/lib/gemma";
 import { rubricFor } from "@/lib/scoring";
 import { getScenario } from "@/lib/scenarios";
-import clinic from "@/lib/clinic.json";
+import { currentClinicContext } from "@/lib/session";
 
 const LiveSchema = z.object({ passed: z.array(z.string()).default([]) });
 
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
   const limited = rateLimit(req, "checklist", 40);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
-  const scenario = getScenario(body?.scenarioId);
+  const ctx = await currentClinicContext();
+  const scenario = getScenario(body?.scenarioId, ctx);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
 
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
 Скрытая причина сомнений (известна тебе, но не оператору): ${scenario.hiddenObjection}
 
 Факты с сайта клиники:
-${clinic.memo.map((m) => `- ${m}`).join("\n")}
+${ctx.memo.map((m) => `- ${m}`).join("\n")}
 
 <transcript>
 ${text}

@@ -19,7 +19,9 @@ type State = {
   working: Legend | null;
   history: { id: number; version: number; approvedAt: number; facts: number; status: string }[];
   changes: { added: string[]; removed: Fact[] } | null;
+  patients: { status: "pending" | "ready" | "failed" | null; error: string | null; personas: Record<string, Fit> } | null;
 };
+type Fit = { lead: string; situation: string; concerns: string };
 
 const date = (ms: number) => new Date(ms).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 const shortUrl = (u: string) => {
@@ -85,15 +87,16 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
     run("load");
   }, [run]);
 
-  // While the server reads the sites, check back every 4 seconds.
+  // While the server reads the sites or fits the patients, check back every 4 seconds.
   const analyzing = state?.working?.status === "analyzing";
+  const fitting = state?.patients?.status === "pending";
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    if (!analyzing) return;
+    if (!analyzing && !fitting) return;
     timer.current = setInterval(async () => {
       try {
         const s = await call(clinicId);
-        if (s.working?.status !== "analyzing") {
+        if (s.working?.status !== "analyzing" && s.patients?.status !== "pending") {
           apply(s);
           onChanged();
         }
@@ -104,7 +107,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [analyzing, apply, clinicId, onChanged]);
+  }, [analyzing, fitting, apply, clinicId, onChanged]);
 
   if (!state) return <Panel><p className="text-sm text-slate-500">{error || "Загружаем легенду…"}</p></Panel>;
 
@@ -326,6 +329,43 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
               );
             })}
           </div>
+        </Panel>
+      )}
+
+      {approved && state.patients && (
+        <Panel>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <PanelTitle>Пациенты под эту клинику</PanelTitle>
+              <p className="mt-1 text-xs text-pretty text-slate-500">
+                Те же шесть характеров, но с услугами, ценами и акциями из легенды. Подстраиваются после каждого утверждения.
+              </p>
+            </div>
+            <button type="button" className="btn btn-ghost px-4 py-2 text-xs" disabled={!!busy || fitting} onClick={() => run("refit", { action: "refit" })}>
+              Пересобрать пациентов
+            </button>
+          </div>
+          {fitting && (
+            <p className="mt-4 flex items-center gap-2.5 text-sm text-slate-300">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
+              Подстраиваем пациентов под легенду, около минуты. Пока это идёт, тренировки используют общих пациентов.
+            </p>
+          )}
+          {state.patients.status === "failed" && <p role="alert" className="alert alert-error mt-4">Не удалось подстроить пациентов: {state.patients.error}</p>}
+          {state.patients.status === "ready" && (
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {Object.entries(state.patients.personas).map(([id, p]) => (
+                <li key={id} className="rounded-xl bg-ink-950/50 p-3 ring-1 ring-inset ring-white/[0.06]">
+                  <p className="text-sm text-slate-200">{p.lead}</p>
+                  <details className="mt-2 text-xs text-slate-400">
+                    <summary className="cursor-pointer text-slate-500 hover:text-slate-300">Ситуация и вопросы</summary>
+                    <p className="mt-2 text-pretty">{p.situation}</p>
+                    <p className="mt-2 whitespace-pre-line">{p.concerns}</p>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       )}
 
