@@ -1,9 +1,13 @@
-// PDF reports for the owner: one clinic (team figures, skills, misses, every trainee) and one trainee (figures, score
-// chart, skills, misses, every call). A4, light paper so it prints; the full Onest font covers Cyrillic and Latin.
+// PDF reports for the owner: one clinic (team figures, skills, misses, every trainee), one trainee (figures, score
+// chart, skills, misses, every call), and a clinic's legend to agree with the clinic. A4, light paper so it prints; the
+// full Onest font covers Cyrillic and Latin.
 import PDFDocument from "pdfkit";
 import { join } from "node:path";
 import { SKILLS } from "./scoring.ts";
 import { clinicStats, userStats } from "./stats.ts";
+import { db } from "./db.ts";
+import { OFFERS_SOURCE, SECTIONS, approvedLegend, getSites, workingLegend } from "./legend.ts";
+import { directionLabel, getDirections } from "./directions.ts";
 import brand from "./brand.json" with { type: "json" };
 
 type Doc = InstanceType<typeof PDFDocument>;
@@ -29,7 +33,7 @@ function newDoc(title: string): Doc {
   return doc;
 }
 
-function toBuffer(doc: Doc): Promise<Buffer> {
+function toBuffer(doc: Doc, made = "отчёт сформирован"): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     doc.on("data", (c: Buffer) => chunks.push(c));
@@ -42,7 +46,7 @@ function toBuffer(doc: Doc): Promise<Buffer> {
       // The footer sits below the bottom margin; without this pdfkit would push it onto a new page.
       doc.page.margins.bottom = 0;
       doc.font("regular").fontSize(8).fillColor(C.muted);
-      doc.text(`${brand.name} · отчёт сформирован ${dateTime(Date.now())} (МСК)`, PAGE.m, PAGE.h - 32, { width: W - 60, lineBreak: false });
+      doc.text(`${brand.name} · ${made} ${dateTime(Date.now())} (МСК)`, PAGE.m, PAGE.h - 32, { width: W - 60, lineBreak: false });
       doc.text(`${i + 1} / ${range.count}`, PAGE.w - PAGE.m - 60, PAGE.h - 32, { width: 60, align: "right", lineBreak: false });
     }
     doc.end();
@@ -250,4 +254,85 @@ export async function userReportPdf(userId: number, now = Date.now()) {
     ]),
   );
   return { pdf: await toBuffer(doc), name: `${s.user.login}-${new Date(now).toISOString().slice(0, 10)}.pdf` };
+}
+
+const shortSource = (src: string) => {
+  if (src === OFFERS_SOURCE) return "из текста рекламных офферов";
+  try {
+    const u = new URL(src);
+    return `${u.hostname.replace(/^www\./, "")}${u.pathname === "/" ? "" : u.pathname}`;
+  } catch {
+    return src;
+  }
+};
+
+/**
+ * The clinic's legend as a document to agree with the clinic: every fact by section with its source, the clinic's
+ * directions, the sites it was read from, and a sign-off block. `version`: the draft or the approved version
+ * (default: the draft if there is one).
+ */
+export async function legendPdf(clinicId: number, version?: "draft" | "approved", now = Date.now()) {
+  const clinic = db().prepare("SELECT legal_name AS legalName, slug, city FROM clinics WHERE id = ?").get(clinicId) as { legalName: string; slug: string; city: string } | undefined;
+  if (!clinic) return null;
+  const working = workingLegend(clinicId);
+  const draft = working?.status === "draft" ? working : null;
+  const legend = version === "approved" ? approvedLegend(clinicId) : version === "draft" ? draft : draft ?? approvedLegend(clinicId);
+  if (!legend) return null;
+  const isDraft = legend.status === "draft";
+
+  const doc = newDoc(`Легенда клиники: ${clinic.legalName}`);
+  const state = isDraft ? `черновик от ${dateOnly(legend.updatedAt)}` : `версия ${legend.version}, утверждена ${dateOnly(legend.approvedAt ?? legend.updatedAt)}`;
+  let y = header(doc, "Легенда клиники · на согласование", clinic.legalName, `${clinic.city} · ${state}`);
+
+  doc.font("regular").fontSize(9.5).fillColor(C.ink).text(
+    "Это сведения о клинике, на которых построены тренировки администраторов: виртуальные пациенты видели рекламу и сайт клиники и спрашивают именно об этом, а оценка звонка проверяет, не выдумал ли администратор лишнего. Проверьте, пожалуйста, что всё верно: услуги, цены, акции и сроки, рассрочка, гарантии, адрес и часы работы. Исправления можно отметить прямо в документе или написать нам.",
+    PAGE.m, y, { width: W, lineGap: 2 },
+  );
+  y = doc.y + 14;
+
+  const directions = getDirections(clinicId);
+  if (directions.length) {
+    doc.font("bold").fontSize(9.5).fillColor(C.ink).text("Направления клиники: ", PAGE.m, y, { continued: true });
+    doc.font("regular").text(directions.map(directionLabel).join(", "));
+    y = doc.y + 14;
+  }
+
+  let n = 0;
+  for (const sec of SECTIONS) {
+    const items = legend.facts.filter((f) => f.section === sec.key);
+    if (items.length === 0) continue;
+    y = section(doc, y, sec.label, sec.key === "missing" ? "Этого на сайте нет: администратор не должен это выдумывать. Если сведения есть, допишите их." : undefined);
+    for (const f of items) {
+      n++;
+      const textH = doc.font("regular").fontSize(10).heightOfString(f.text, { width: W - 24 });
+      y = room(doc, y, textH + 16);
+      doc.font("bold").fontSize(9).fillColor(C.accent).text(String(n), PAGE.m, y + 1, { width: 18, align: "right" });
+      doc.font("regular").fontSize(10).fillColor(C.ink).text(f.text, PAGE.m + 24, y, { width: W - 24 });
+      if (f.source) doc.font("regular").fontSize(7.5).fillColor(C.muted).text(shortSource(f.source), PAGE.m + 24, doc.y + 1, { width: W - 24 });
+      y = doc.y + 7;
+    }
+    y += 8;
+  }
+
+  const sites = getSites(clinicId);
+  if (sites.length) {
+    y = section(doc, y, "Откуда взяты сведения");
+    for (const s of sites) {
+      y = room(doc, y, 16);
+      doc.font("regular").fontSize(9).fillColor(C.ink).text(`${s.label ? `${s.label}: ` : ""}${s.url}`, PAGE.m, y, { width: W });
+      y = doc.y + 4;
+    }
+    y += 10;
+  }
+
+  y = room(doc, y, 150);
+  y = section(doc, y, "Согласовано со стороны клиники");
+  for (const label of ["ФИО", "Должность", "Подпись", "Дата"]) {
+    doc.font("regular").fontSize(9.5).fillColor(C.muted).text(label, PAGE.m, y + 6, { width: 90, lineBreak: false });
+    doc.moveTo(PAGE.m + 90, y + 18).lineTo(PAGE.m + W, y + 18).lineWidth(0.6).strokeColor(C.line).stroke();
+    y += 28;
+  }
+
+  const tag = isDraft ? "draft" : `v${legend.version}`;
+  return { pdf: await toBuffer(doc, "документ сформирован"), name: `legend-${clinic.slug}-${tag}-${new Date(now).toISOString().slice(0, 10)}.pdf` };
 }

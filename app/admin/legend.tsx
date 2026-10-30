@@ -47,6 +47,9 @@ async function call(clinicId: number, body?: object): Promise<State> {
   return data as State;
 }
 
+/** The legend as a PDF to agree with the clinic. */
+const legendPdfUrl = (clinicId: number, version: "draft" | "approved") => `/api/admin/report?type=legend&id=${clinicId}&version=${version}`;
+
 export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChanged: () => void }) {
   const [state, setState] = useState<State | null>(null);
   const [sites, setSites] = useState<{ url: string; label: string }[]>([]);
@@ -78,8 +81,10 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
         apply(await call(clinicId, body));
         if (done) setNotice(done);
         onChanged();
+        return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
+        return false;
       } finally {
         setBusy("");
       }
@@ -307,6 +312,18 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
             <button type="button" className="btn btn-ghost" disabled={!!busy || !dirty} onClick={() => run("save", { action: "save", facts: facts.filter((f) => f.text.trim()) }, "Черновик сохранён")}>
               Сохранить черновик
             </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={!!busy}
+              title="PDF для согласования с клиникой; несохранённые правки сначала сохраняются"
+              onClick={async () => {
+                if (dirty && !(await run("save", { action: "save", facts: facts.filter((f) => f.text.trim()) }, "Черновик сохранён"))) return;
+                window.location.href = legendPdfUrl(clinicId, "draft");
+              }}
+            >
+              Скачать PDF
+            </button>
             <button type="button" className="ml-auto text-sm text-slate-500 hover:text-rose-300" disabled={!!busy} onClick={() => run("discard", { action: "discard" })}>
               Удалить черновик
             </button>
@@ -318,9 +335,14 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
         <Panel>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <PanelTitle>Утверждённая легенда · версия {approved.version}</PanelTitle>
-            <button type="button" className="btn btn-ghost px-4 py-2 text-xs" disabled={!!busy} onClick={() => run("save", { action: "save", facts: approved.facts })}>
-              Редактировать
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <a href={legendPdfUrl(clinicId, "approved")} download className="btn btn-ghost px-4 py-2 text-xs" title="PDF для согласования с клиникой">
+                Скачать PDF
+              </a>
+              <button type="button" className="btn btn-ghost px-4 py-2 text-xs" disabled={!!busy} onClick={() => run("save", { action: "save", facts: approved.facts })}>
+                Редактировать
+              </button>
+            </div>
           </div>
           <div className="mt-4 flex flex-col gap-4">
             {sections.map((sec) => {
