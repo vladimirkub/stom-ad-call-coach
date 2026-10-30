@@ -4,11 +4,19 @@ import AgencyBanner from "../agency-banner";
 import KbBadge from "../kb-badge";
 import { Brand } from "../ui";
 import { ArrowUpRight, Calculator, Phone, Spark } from "../icons";
+import { FEATURES } from "@/lib/features";
 
 const TOOLS = [
-  { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone },
-  { href: "/calculator", title: "Калькулятор потерь", text: "Сколько выручки теряется на записи и неявках.", Icon: Calculator },
+  { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone, on: FEATURES.realCalls },
+  { href: "/calculator", title: "Калькулятор потерь", text: "Сколько выручки теряется на записи и неявках.", Icon: Calculator, on: FEATURES.calculator },
 ];
+const OPERATOR_ON = FEATURES.operator;
+const KNOWLEDGE_ON = FEATURES.knowledge;
+
+/** A switched-off section's card: greyed out, not a link, «Скоро» instead of the action. */
+function Soon() {
+  return <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-slate-500">Скоро</span>;
+}
 
 // Workspace: everything fits one screen on desktop (nav + headline + bento that fills the height). Below `lg` it stacks and scrolls.
 // The page grid is the patients' 4 columns plus the operator column, with the same gap, so edges line up: the agency
@@ -36,28 +44,44 @@ export default function Workspace() {
             </div>
           </header>
           <PatientGrid>
-            {TOOLS.map((t, i) => (
-              <Link
-                key={t.href}
-                href={t.href}
-                style={{ animationDelay: `${720 + i * 60}ms` }}
-                className="rise group flex min-h-0 rounded-[1.5rem] bg-accent/[0.06] p-[0.3125rem] ring-1 ring-inset ring-accent/30 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 hover:ring-accent/60 active:scale-[0.99]"
-              >
-                <article className="fit-card bezel-core flex min-h-0 flex-1 flex-col overflow-hidden p-4 transition-colors duration-500 group-hover:bg-ink-700 lg:p-3.5 low:p-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-ink-950 lg:h-9 lg:w-9 short:h-8 short:w-8">
-                    <t.Icon className="h-5 w-5" />
-                  </span>
-                  <h3 className="mt-4 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:text-[15px] low:mt-1.5 low:text-sm">{t.title}</h3>
-                  <p className="fit-desc mt-2 text-[13px] leading-relaxed text-pretty text-slate-400 lg:mt-1.5 lg:text-[12.5px]">{t.text}</p>
-                  <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent lg:pt-2 low:pt-1">
-                    Открыть
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950 low:h-6 low:w-6">
-                      <ArrowUpRight className="h-3.5 w-3.5" />
+            {TOOLS.map((t, i) =>
+              t.on ? (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  style={{ animationDelay: `${720 + i * 60}ms` }}
+                  className="rise group flex min-h-0 rounded-[1.5rem] bg-accent/[0.06] p-[0.3125rem] ring-1 ring-inset ring-accent/30 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 hover:ring-accent/60 active:scale-[0.99]"
+                >
+                  <article className="fit-card bezel-core flex min-h-0 flex-1 flex-col overflow-hidden p-4 transition-colors duration-500 group-hover:bg-ink-700 lg:p-3.5 low:p-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-ink-950 lg:h-9 lg:w-9 short:h-8 short:w-8">
+                      <t.Icon className="h-5 w-5" />
                     </span>
-                  </span>
-                </article>
-              </Link>
-            ))}
+                    <h3 className="mt-4 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:text-[15px] low:mt-1.5 low:text-sm">{t.title}</h3>
+                    <p className="fit-desc mt-2 text-[13px] leading-relaxed text-pretty text-slate-400 lg:mt-1.5 lg:text-[12.5px]">{t.text}</p>
+                    <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent lg:pt-2 low:pt-1">
+                      Открыть
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950 low:h-6 low:w-6">
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </span>
+                    </span>
+                  </article>
+                </Link>
+              ) : (
+                <div key={t.href} aria-disabled="true" title="Раздел временно недоступен" style={{ animationDelay: `${720 + i * 60}ms` }} className="rise bezel flex min-h-0 cursor-default">
+                  <article className="fit-card bezel-core flex min-h-0 flex-1 flex-col overflow-hidden p-4 opacity-55 lg:p-3.5 low:p-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-slate-500 ring-1 ring-white/10 lg:h-9 lg:w-9 short:h-8 short:w-8">
+                      <t.Icon className="h-5 w-5" />
+                    </span>
+                    <h3 className="mt-4 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-300 lg:mt-2.5 lg:text-[15px] low:mt-1.5 low:text-sm">{t.title}</h3>
+                    <p className="fit-desc mt-2 text-[13px] leading-relaxed text-pretty text-slate-500 lg:mt-1.5 lg:text-[12.5px]">{t.text}</p>
+                    <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-500 lg:pt-2 low:pt-1">
+                      Временно недоступно
+                      <Soon />
+                    </span>
+                  </article>
+                </div>
+              ),
+            )}
           </PatientGrid>
         </section>
 
@@ -65,73 +89,122 @@ export default function Workspace() {
 
         <section aria-label="Виртуальный оператор и база знаний" className="flex min-h-0 flex-col gap-4 lg:col-span-1 lg:col-start-5 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
           <div className="grid min-h-0 flex-1 gap-3 lg:row-start-2 lg:grid-rows-[1fr_auto] low:gap-2.5">
-            <Link
-              href="/operator"
-              className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
-              style={{ animationDelay: "180ms" }}
-            >
-              <div className="bezel-core relative flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-hidden p-5 lg:p-4 short:gap-3 low:p-3.5">
-                <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 h-64 w-64 rounded-full bg-accent/[0.12] blur-3xl" />
-                <div className="relative flex items-center gap-3">
-                  <span className="ring-pulse flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-ink-950 short:h-10 short:w-10">
-                    <Phone className="h-5 w-5" />
-                  </span>
-                  <div className="leading-tight">
-                    <p className="text-xs font-medium text-accent">Режим 2 · вы пациент</p>
-                    <p className="mt-0.5 text-sm font-medium text-slate-100">Входящий от ИИ-оператора</p>
-                  </div>
-                </div>
+            <OperatorCard />
 
-                <div aria-hidden className="relative flex min-h-8 flex-1 items-center justify-center gap-[3px] opacity-80">
-                  {Array.from({ length: 40 }, (_, i) => (
-                    <span
-                      key={i}
-                      className="wave-bar w-[3px] rounded-full bg-accent/70"
-                      style={{ height: `${22 + ((i * 37) % 34)}px`, animationDelay: `${(i % 9) * 0.13}s`, animationDuration: `${1 + (i % 5) * 0.18}s` }}
-                    />
-                  ))}
-                </div>
-
-                <div className="relative">
-                  <h3 className="text-2xl font-semibold leading-tight tracking-[-0.02em] text-balance lg:text-xl tall:text-2xl short:text-lg">Примите звонок и сыграйте любого пациента</h3>
-                  <p className="mt-2 text-sm leading-relaxed lg:line-clamp-4 text-pretty text-slate-400 short:line-clamp-3 short:text-[13px] low:hidden">
-                    Роли меняются: звонит ИИ, а пациента играете вы. Соглашайтесь, сомневайтесь, торгуйтесь или откажитесь. После звонка получите разбор, а удачные приёмы попадут в базу знаний.
-                  </p>
-                </div>
-
-                <span className="relative flex w-full items-center justify-between rounded-full bg-accent py-1.5 pr-1.5 pl-5 text-sm font-semibold text-ink-950 transition duration-500 ease-[var(--ease-spring)] group-active:scale-[0.98]">
-                  Принять звонок
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-105">
-                    <ArrowUpRight className="h-4 w-4" />
-                  </span>
-                </span>
-              </div>
-            </Link>
-
-            <Link
-              href="/knowledge"
-              className="rise bezel group flex transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
-              style={{ animationDelay: "240ms" }}
-            >
-              <div className="bezel-core flex flex-1 items-center justify-between gap-4 p-4 transition-colors duration-500 group-hover:bg-ink-700 low:p-3">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <Spark className="h-3.5 w-3.5 text-accent" />
-                    База знаний оператора
-                  </p>
-                  <div className="mt-1.5">
-                    <KbBadge />
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-pretty text-slate-500 short:hidden">Что работает и чего избегать. Подставляется в каждый новый звонок.</p>
-                </div>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-slate-300 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
-                  <ArrowUpRight className="h-4 w-4" />
-                </span>
-              </div>
-            </Link>
+            <KnowledgeCard />
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+/** Mode 2 card: the AI operator calls and the trainee plays the patient. Greyed out while the mode is switched off. */
+function OperatorCard() {
+  const on = OPERATOR_ON;
+  const body = (
+    <div className={`bezel-core relative flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-hidden p-5 lg:p-4 short:gap-3 low:p-3.5 ${on ? "" : "opacity-55"}`}>
+      {on && <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 h-64 w-64 rounded-full bg-accent/[0.12] blur-3xl" />}
+      <div className="relative flex items-center gap-3">
+        <span
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full short:h-10 short:w-10 ${on ? "ring-pulse bg-accent text-ink-950" : "bg-white/[0.06] text-slate-500 ring-1 ring-white/10"}`}
+        >
+          <Phone className="h-5 w-5" />
+        </span>
+        <div className="leading-tight">
+          <p className={`text-xs font-medium ${on ? "text-accent" : "text-slate-500"}`}>Режим 2 · вы пациент</p>
+          <p className={`mt-0.5 text-sm font-medium ${on ? "text-slate-100" : "text-slate-400"}`}>Входящий от ИИ-оператора</p>
+        </div>
+      </div>
+
+      <div aria-hidden className="relative flex min-h-8 flex-1 items-center justify-center gap-[3px] opacity-80">
+        {Array.from({ length: 40 }, (_, i) => (
+          <span
+            key={i}
+            className={`w-[3px] rounded-full ${on ? "wave-bar bg-accent/70" : "bg-slate-600/60"}`}
+            style={{
+              height: `${on ? 22 + ((i * 37) % 34) : 6 + ((i * 37) % 14)}px`,
+              ...(on ? { animationDelay: `${(i % 9) * 0.13}s`, animationDuration: `${1 + (i % 5) * 0.18}s` } : {}),
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative">
+        <h3 className={`text-2xl font-semibold leading-tight tracking-[-0.02em] text-balance lg:text-xl tall:text-2xl short:text-lg ${on ? "" : "text-slate-300"}`}>
+          Примите звонок и сыграйте любого пациента
+        </h3>
+        <p className="mt-2 text-sm leading-relaxed lg:line-clamp-4 text-pretty text-slate-400 short:line-clamp-3 short:text-[13px] low:hidden">
+          Роли меняются: звонит ИИ, а пациента играете вы. Соглашайтесь, сомневайтесь, торгуйтесь или откажитесь. После звонка получите разбор, а удачные приёмы попадут в базу знаний.
+        </p>
+      </div>
+
+      {on ? (
+        <span className="relative flex w-full items-center justify-between rounded-full bg-accent py-1.5 pr-1.5 pl-5 text-sm font-semibold text-ink-950 transition duration-500 ease-[var(--ease-spring)] group-active:scale-[0.98]">
+          Принять звонок
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-105">
+            <ArrowUpRight className="h-4 w-4" />
+          </span>
+        </span>
+      ) : (
+        <span className="relative flex w-full items-center justify-between rounded-full bg-white/[0.05] py-1.5 pr-1.5 pl-5 text-sm font-medium text-slate-500">
+          Временно недоступно
+          <span className="flex h-8 items-center rounded-full px-3 text-xs">Скоро</span>
+        </span>
+      )}
+    </div>
+  );
+  return on ? (
+    <Link href="/operator" className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]" style={{ animationDelay: "180ms" }}>
+      {body}
+    </Link>
+  ) : (
+    <div aria-disabled="true" title="Раздел временно недоступен" className="rise bezel flex min-h-0 cursor-default" style={{ animationDelay: "180ms" }}>
+      {body}
+    </div>
+  );
+}
+
+/** The operator's knowledge base; greyed out with the AI operator, which is the only one that uses it. */
+function KnowledgeCard() {
+  if (!KNOWLEDGE_ON) {
+    return (
+      <div aria-disabled="true" title="Раздел временно недоступен" className="rise bezel flex cursor-default" style={{ animationDelay: "240ms" }}>
+        <div className="bezel-core flex flex-1 items-center justify-between gap-4 p-4 opacity-55 low:p-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Spark className="h-3.5 w-3.5" />
+              База знаний оператора
+            </p>
+            <p className="mt-1.5 text-sm font-medium text-slate-400">Временно недоступно</p>
+            <p className="mt-1 line-clamp-2 text-xs text-pretty text-slate-500 short:hidden">Что работает и чего избегать. Подставляется в каждый новый звонок.</p>
+          </div>
+          <Soon />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <Link
+      href="/knowledge"
+      className="rise bezel group flex transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
+      style={{ animationDelay: "240ms" }}
+    >
+      <div className="bezel-core flex flex-1 items-center justify-between gap-4 p-4 transition-colors duration-500 group-hover:bg-ink-700 low:p-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Spark className="h-3.5 w-3.5 text-accent" />
+            База знаний оператора
+          </p>
+          <div className="mt-1.5">
+            <KbBadge />
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs text-pretty text-slate-500 short:hidden">Что работает и чего избегать. Подставляется в каждый новый звонок.</p>
+        </div>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-slate-300 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
+          <ArrowUpRight className="h-4 w-4" />
+        </span>
+      </div>
+    </Link>
   );
 }

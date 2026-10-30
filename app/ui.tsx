@@ -86,3 +86,14 @@ export function PanelTitle({ icon, children, tone }: { icon?: React.ReactNode; c
     </h2>
   );
 }
+
+/** What a switched-off section's page shows instead of itself (lib/features.ts). */
+export function Unavailable({ title }: { title: string }) {
+  return (
+    <Shell>
+      <PageHeader eyebrow="Скоро" title={title}>
+        Раздел временно недоступен. Остальные режимы тренажёра работают как обычно.
+      </PageHeader>
+    </Shell>
+  );
+}
