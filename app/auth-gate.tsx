@@ -95,7 +95,12 @@ function LoginWindow() {
           </div>
           <div>
             <h2 id="login-title" className="text-2xl font-semibold tracking-[-0.02em]">Вход в тренажёр</h2>
-            <p className="mt-1 text-sm text-pretty text-slate-400">Логин и пароль выдаёт Stom AD. Если их нет, обратитесь к своему менеджеру.</p>
+            <p className="mt-1 text-sm text-pretty text-slate-400">
+              Логин и пароль выдаёт{" "}
+              <a href={brand.agencyUrl} target="_blank" rel="noopener" className="font-medium text-accent underline decoration-accent/40 underline-offset-2 transition hover:decoration-accent">
+                Владимир | STOM AD
+              </a>
+            </p>
           </div>
           <label className="flex flex-col gap-1.5 text-xs font-medium text-slate-400">
             Логин
