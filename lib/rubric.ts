@@ -1,4 +1,4 @@
-// Evaluation checklist: 21 criteria, grouped by skill. Skill scores are computed from it in code.
+// Evaluation checklist: 22 criteria, grouped by skill. Skill scores are computed from it in code.
 export const SKILL_KEYS = ["discovery", "objectionHandling", "booking", "showUp"] as const;
 export type SkillKey = (typeof SKILL_KEYS)[number];
 
@@ -8,6 +8,8 @@ export type RubricItem = {
   label: string;
   // Only meaningful for training scenarios with a known hidden objection (skipped for real calls).
   scenarioOnly?: boolean;
+  // Decided in code from the call itself, not by the model (neither the evaluation nor the live checklist sees it).
+  auto?: boolean;
 };
 
 export const RUBRIC: RubricItem[] = [
@@ -29,6 +31,7 @@ export const RUBRIC: RubricItem[] = [
   { id: "explainedFormat", skill: "booking", label: "Объяснил, что будет на приёме (формат, бесплатная диагностика)" },
   { id: "gotAgreement", skill: "booking", label: "Получил явное согласие на конкретную запись" },
   { id: "clearNextStep", skill: "booking", label: "Закончил чётким следующим шагом, а не «я подумаю»" },
+  { id: "onTime", skill: "booking", label: "Записал пациента за 2,5 минуты (в тексте — за 8 реплик)", scenarioOnly: true, auto: true },
 
   { id: "repeatedDetails", skill: "showUp", label: "Повторил дату, время и формат приёма" },
   { id: "route", skill: "showUp", label: "Объяснил, как добраться, или пообещал отправить адрес" },

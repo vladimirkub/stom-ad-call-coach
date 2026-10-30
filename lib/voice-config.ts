@@ -5,6 +5,11 @@ export const FAST_TURN = {
   speculative_turn: true, // start generating the reply during the pause, before the turn is certainly over
 } as const;
 
+// Patient calls (not the operator): re-engage after 5 s of silence, drop the call after 15 s of it, and end any call at
+// 4 minutes (lib/tempo.ts). ElevenLabs' defaults were 7 s, never and 10 minutes.
+export const PATIENT_TURN = { ...FAST_TURN, turn_timeout: 5, silence_end_call_timeout: 15 } as const;
+export const PATIENT_CONVERSATION = { max_duration_seconds: 240 } as const;
+
 export const FAST_PROMPT = {
   thinking_budget: 0, // no hidden "thinking" tokens before the first spoken word
   max_tokens: 300, // short spoken replies (2-3 sentences) finish and start faster

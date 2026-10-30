@@ -5,6 +5,10 @@ import { gemmaText } from "@/lib/gemma";
 import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext } from "@/lib/session";
 
+// Text mode has no tools: the patient hangs up by writing end_call, which the page turns into "the patient hung up".
+const TEXT_HANG_UP =
+  "ЭТО ПЕРЕПИСКА В ЧАТЕ, инструментов здесь нет. Каждый раз, когда ты по правилам кладёшь трубку (прощаешься и заканчиваешь разговор), допиши в самом конце реплики отдельное слово end_call. Без этого слова разговор не закончится.";
+
 /** Text-mode fallback: Gemma plays the same patient persona. */
 export async function POST(req: Request) {
   const limited = rateLimit(req, "chat", 40);
@@ -15,7 +19,7 @@ export async function POST(req: Request) {
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   try {
     const raw = await gemmaText({
-      system: scenario.prompt,
+      system: `${scenario.prompt}\n\n${TEXT_HANG_UP}`,
       contents: parsed.data.map((t) => ({ role: t.role === "agent" ? ("model" as const) : ("user" as const), text: t.text })),
       // A live reply: ~1 s without extended thinking, and the persona prompt already carries the reasoning rules.
       thinking: "minimal",

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { TEMPO } from "@/lib/tempo";
 import { Mic, MicOff } from "./icons";
 
 // Pieces shared by the two live-call screens (trainer and virtual operator).
@@ -38,6 +40,33 @@ export function Status({ children, live }: { children: React.ReactNode; live?: b
     <span className="flex min-w-0 flex-1 items-center gap-2 text-sm text-slate-300">
       {live && <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-accent" />}
       <span className="truncate">{children}</span>
+    </span>
+  );
+}
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+/**
+ * The call's pace against the 2.5-minute target (lib/tempo.ts): elapsed time in voice, the operator's replies in text.
+ * Mint while on pace, amber when it is time to close on a booking, rose past the target.
+ */
+export function CallTimer({ mode, startedAt, endedAt, replies }: { mode: "voice" | "text"; startedAt: number; endedAt: number | null; replies: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (endedAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [endedAt]);
+  const voice = mode === "voice";
+  const value = voice ? Math.max(0, Math.round(((endedAt ?? now) - startedAt) / 1000)) : replies;
+  const warn = voice ? TEMPO.warnSeconds : TEMPO.targetTextReplies - 2;
+  const target = voice ? TEMPO.targetSeconds : TEMPO.targetTextReplies;
+  const tone = value > target ? "bg-rose-500/15 text-rose-200 ring-rose-400/30" : value >= warn ? "bg-amber-400/15 text-amber-100 ring-amber-300/30" : "bg-accent/10 text-accent ring-accent/25";
+  const hint = voice ? `Цель — записать пациента за ${clock(TEMPO.targetSeconds)}` : `Цель — записать пациента за ${TEMPO.targetTextReplies} реплик`;
+  return (
+    <span title={hint} className={`flex shrink-0 items-baseline gap-1 rounded-full px-3 py-1.5 text-sm font-medium tabular-nums ring-1 ring-inset transition-colors duration-500 ${tone}`}>
+      {voice ? clock(value) : value}
+      <span className="text-xs font-normal opacity-70">/ {voice ? clock(target) : `${target} реплик`}</span>
     </span>
   );
 }

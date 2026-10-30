@@ -1,6 +1,6 @@
 // Setup: creates or updates one ElevenLabs agent per patient scenario; ids are stored in .agents.json.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { FAST_PROMPT, FAST_TURN, OPERATOR_TTS, PATIENT_LLM_OVERRIDES, PATIENT_TTS_OVERRIDES } from "../lib/voice-config.ts";
+import { FAST_PROMPT, FAST_TURN, OPERATOR_TTS, PATIENT_CONVERSATION, PATIENT_TURN, PATIENT_LLM_OVERRIDES, PATIENT_TTS_OVERRIDES } from "../lib/voice-config.ts";
 import { OPERATOR_VOICE_ID, operatorFirstMessage, operatorPromptConfig } from "../lib/operator.ts";
 import { END_CALL_TOOL, agentPrompt } from "../lib/patient-behavior.ts";
 
@@ -25,7 +25,8 @@ const jobs = pub.map((s) => {
     key: s.id,
     name: `${brand.name} - ${s.name}`,
     conversation_config: {
-      turn: FAST_TURN,
+      turn: PATIENT_TURN,
+      conversation: PATIENT_CONVERSATION,
       agent: {
         first_message: s.firstMessage,
         language: "ru",

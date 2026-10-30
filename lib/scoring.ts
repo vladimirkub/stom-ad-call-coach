@@ -31,3 +31,8 @@ export function totalScore(scores: Scores): number {
 export function rubricFor(real: boolean): RubricItem[] {
   return RUBRIC.filter((r) => !(real && r.scenarioOnly));
 }
+
+/** The part of the rubric the model judges from the transcript; `auto` items are decided in code. */
+export function modelRubric(real: boolean): RubricItem[] {
+  return rubricFor(real).filter((r) => !r.auto);
+}

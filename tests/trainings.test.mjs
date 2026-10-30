@@ -29,7 +29,11 @@ const save = (userId, n, total, startedAt) =>
 
 test("the client's call description is validated", () => {
   const ok = parseAttempt({ id: id(1), mode: "text", startedAt: NOW - 60_000, endedBy: "patient", live: ["a", 5, "b"] }, NOW);
-  assert.deepEqual(ok, { id: id(1), mode: "text", startedAt: NOW - 60_000, endedBy: "patient", live: ["a", "b"] });
+  assert.deepEqual(ok, { id: id(1), mode: "text", startedAt: NOW - 60_000, endedBy: "patient", durationS: null, live: ["a", "b"] });
+  const timed = (durationS) => parseAttempt({ id: id(1), mode: "voice", startedAt: NOW - 60_000, durationS }, NOW).durationS;
+  assert.equal(timed(42.4), 42, "the call's own length, reported by the page");
+  assert.equal(timed(999), 60, "never longer than the time since the call started");
+  assert.equal(timed(-5), null);
   assert.equal(parseAttempt({ id: "not-a-uuid", mode: "voice", startedAt: NOW }, NOW), null);
   assert.equal(parseAttempt({ id: id(1), mode: "video", startedAt: NOW }, NOW), null);
   assert.equal(parseAttempt({ id: id(1), mode: "voice", startedAt: NOW + 3_600_000 }, NOW), null, "not in the future");

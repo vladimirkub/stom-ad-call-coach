@@ -3,6 +3,7 @@
 import { db } from "./db.ts";
 import { SKILL_KEYS, type SkillKey } from "./rubric.ts";
 import { rubricFor } from "./scoring.ts";
+import { TEMPO } from "./tempo.ts";
 import scenarios from "./scenarios-public.json" with { type: "json" };
 
 const DAY = 864e5;
@@ -66,12 +67,15 @@ export function clinicStats(clinicId: number, now = Date.now()) {
          COUNT(t.id) AS count, AVG(t.total) AS average,
          AVG(CASE WHEN t.started_at >= ? THEN t.total END) AS avg7,
          AVG(CASE WHEN t.started_at >= ? AND t.started_at < ? THEN t.total END) AS avgPrev7,
-         SUM(t.booked) AS booked, MAX(t.started_at) AS lastAt
+         SUM(t.booked) AS booked, MAX(t.started_at) AS lastAt,
+         AVG(CASE WHEN t.mode = 'voice' THEN t.duration_s END) AS voiceAvgS,
+         SUM(t.mode = 'voice') AS voiceCalls, SUM(t.mode = 'voice' AND t.duration_s <= ?) AS voiceOnTime
        FROM users u LEFT JOIN trainings t ON t.user_id = u.id
        WHERE u.clinic_id = ? AND u.role = 'trainee' GROUP BY u.id ORDER BY lastAt IS NULL, lastAt DESC, u.last_name`,
     )
-    .all(now - 7 * DAY, now - 14 * DAY, now - 7 * DAY, clinicId) as {
+    .all(now - 7 * DAY, now - 14 * DAY, now - 7 * DAY, TEMPO.targetSeconds, clinicId) as {
     id: number; firstName: string; lastName: string; login: string; active: number; count: number; average: number | null; avg7: number | null; avgPrev7: number | null; booked: number | null; lastAt: number | null;
+    voiceAvgS: number | null; voiceCalls: number | null; voiceOnTime: number | null;
   }[];
 
   // Most frequent misses over the last 30 days: which checklist items the team fails most often.
@@ -89,6 +93,9 @@ export function clinicStats(clinicId: number, now = Date.now()) {
       id: u.id, firstName: u.firstName, lastName: u.lastName, login: u.login, active: !!u.active,
       count: u.count, average: round(u.average), booked: u.booked ?? 0, lastAt: u.lastAt,
       change7: u.avg7 != null && u.avgPrev7 != null ? Math.round(u.avg7 - u.avgPrev7) : null,
+      // Voice calls only: text has no clock worth trusting (lib/tempo.ts).
+      voiceAvgS: u.voiceAvgS == null ? null : Math.round(u.voiceAvgS),
+      onTimeShare: u.voiceCalls ? Math.round((100 * (u.voiceOnTime ?? 0)) / u.voiceCalls) : null,
     })),
   };
 }

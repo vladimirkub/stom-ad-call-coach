@@ -10,7 +10,10 @@ const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DAY = 864e5;
 
 /** Validates the client's description of the call; null if anything is off (then the evaluation is returned but not saved). */
-export function parseAttempt(raw: unknown, now = Date.now()): { id: string; mode: TrainingMode; startedAt: number; endedBy: EndedBy | null; live: string[] } | null {
+export function parseAttempt(
+  raw: unknown,
+  now = Date.now(),
+): { id: string; mode: TrainingMode; startedAt: number; endedBy: EndedBy | null; durationS: number | null; live: string[] } | null {
   const a = raw as Record<string, unknown> | null;
   if (!a || typeof a.id !== "string" || !ID.test(a.id)) return null;
   if (a.mode !== "voice" && a.mode !== "text") return null;
@@ -19,7 +22,10 @@ export function parseAttempt(raw: unknown, now = Date.now()): { id: string; mode
   if (!Number.isFinite(startedAt) || startedAt > now + 60_000 || startedAt < now - DAY) return null;
   const endedBy = a.endedBy === "patient" || a.endedBy === "operator" ? a.endedBy : null;
   const live = Array.isArray(a.live) ? a.live.filter((x): x is string => typeof x === "string").slice(0, 40) : [];
-  return { id: a.id.toLowerCase(), mode: a.mode, startedAt, endedBy, live };
+  // The call's own length, reported by the page; it cannot be longer than the time since the call started.
+  const reported = Number(a.durationS);
+  const durationS = Number.isFinite(reported) && reported >= 0 ? Math.min(Math.round(reported), Math.round((now - startedAt) / 1000)) : null;
+  return { id: a.id.toLowerCase(), mode: a.mode, startedAt, endedBy, durationS, live };
 }
 
 export function saveTraining(t: {
@@ -53,7 +59,7 @@ export function saveTraining(t: {
       attempt.mode,
       t.legendVersion == null ? null : String(t.legendVersion),
       attempt.startedAt,
-      Math.max(0, Math.round((now - attempt.startedAt) / 1000)),
+      attempt.durationS ?? Math.max(0, Math.round((now - attempt.startedAt) / 1000)),
       attempt.endedBy,
       JSON.stringify(t.transcript),
       JSON.stringify(attempt.live),

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SKILLS, rubricFor } from "@/lib/scoring";
+import { SKILLS, modelRubric } from "@/lib/scoring";
 import type { Turn } from "@/lib/schemas";
 import { Check } from "./icons";
 
-const RUBRIC = rubricFor(false);
+const RUBRIC = modelRubric(false);
 export const CHECKLIST_TOTAL = RUBRIC.length;
 
 /**

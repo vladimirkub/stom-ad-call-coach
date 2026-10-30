@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SKILLS } from "@/lib/scoring";
+import { TEMPO } from "@/lib/tempo";
 import { Panel, PanelTitle } from "../ui";
 
 // Owner statistics: overview -> clinic -> trainee -> one call. Each level loads from /api/admin/stats.
@@ -18,7 +19,7 @@ type ClinicStats = {
   calls30: number;
   skills: Skills;
   misses: { id: string; label: string; count: number; share: number }[];
-  users: { id: number; firstName: string; lastName: string; login: string; active: boolean; count: number; average: number | null; booked: number; lastAt: number | null; change7: number | null }[];
+  users: { id: number; firstName: string; lastName: string; login: string; active: boolean; count: number; average: number | null; booked: number; lastAt: number | null; voiceAvgS: number | null; onTimeShare: number | null; change7: number | null }[];
 };
 type UserStats = {
   user: { id: number; firstName: string; lastName: string; login: string; active: boolean; clinicId: number; clinicName: string };
@@ -253,7 +254,7 @@ function ClinicView({ id, go }: { id: number; go: (v: StatsView) => void }) {
           <p className="p-5 text-sm text-slate-400">В клинике нет администраторов.</p>
         ) : (
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-slate-500">
                   <th className="px-5 py-2.5 font-medium">Администратор</th>
@@ -261,6 +262,8 @@ function ClinicView({ id, go }: { id: number; go: (v: StatsView) => void }) {
                   <th className="px-3 py-2.5 text-right font-medium">Средний балл</th>
                   <th className="px-3 py-2.5 text-right font-medium">За неделю</th>
                   <th className="px-3 py-2.5 text-right font-medium">Записали</th>
+                  <th className="px-3 py-2.5 text-right font-medium" title="Средняя длина голосового звонка">Средний звонок</th>
+                  <th className="px-3 py-2.5 text-right font-medium" title="Доля голосовых звонков не дольше 2,5 минут">В 2,5 мин</th>
                   <th className="px-5 py-2.5 font-medium">Последняя тренировка</th>
                 </tr>
               </thead>
@@ -279,6 +282,10 @@ function ClinicView({ id, go }: { id: number; go: (v: StatsView) => void }) {
                       {u.change7 == null ? "—" : `${u.change7 > 0 ? "+" : ""}${u.change7}`}
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">{u.booked}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${u.voiceAvgS != null && u.voiceAvgS > TEMPO.targetSeconds ? "text-amber-200" : ""}`}>
+                      {u.voiceAvgS == null ? "—" : `${Math.floor(u.voiceAvgS / 60)}:${String(u.voiceAvgS % 60).padStart(2, "0")}`}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums">{u.onTimeShare == null ? "—" : `${u.onTimeShare}%`}</td>
                     <td className={`px-5 py-3 ${u.lastAt ? "text-slate-400" : "text-rose-300"}`}>{ago(u.lastAt)}</td>
                   </tr>
                 ))}

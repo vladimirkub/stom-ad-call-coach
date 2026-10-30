@@ -8,7 +8,7 @@ import scenarios from "@/lib/scenarios-public.json";
 import { reportCall, startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
 import { Shell, Panel } from "../../ui";
-import { CallBar, MicButton, Status } from "../../call-ui";
+import { CallBar, CallTimer, MicButton, Status } from "../../call-ui";
 import { Book, ListCheck, Phone, Target } from "../../icons";
 import { CHECKLIST_TOTAL, LiveChecklist, useLiveChecklist } from "../../live-checklist";
 import { context, initials, quote, years } from "../../patient-grid";
@@ -37,7 +37,12 @@ function Call({ id }: { id: string }) {
   const endRef = useRef<HTMLDivElement>(null);
   // Set when the call starts; the evaluation saves the call to the trainee's history under this id.
   const attempt = useRef<{ id: string; startedAt: number } | null>(null);
-  const beginAttempt = () => (attempt.current = { id: crypto.randomUUID(), startedAt: Date.now() });
+  const beginAttempt = () => {
+    attempt.current = { id: crypto.randomUUID(), startedAt: Date.now() };
+    setEndedAt(null);
+  };
+  // When the call itself ended (not when the evaluation was asked for): the call's length for the tempo check.
+  const [endedAt, setEndedAt] = useState<number | null>(null);
 
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
 
@@ -126,6 +131,7 @@ function Call({ id }: { id: string }) {
     try {
       // The other side may have already hung up; ending a session that is gone throws.
       if (mode === "voice" && conversation.status === "connected") await conversation.endSession();
+      const stoppedAt = endedAt ?? Date.now();
       const res = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,6 +142,7 @@ function Call({ id }: { id: string }) {
             ...attempt.current,
             mode,
             endedBy: hungUp ? "patient" : "operator",
+            durationS: Math.round((stoppedAt - attempt.current.startedAt) / 1000),
             live: [...done],
           },
         }),
@@ -158,6 +165,9 @@ function Call({ id }: { id: string }) {
   const voiceUp = mode === "voice" && conversation.status === "connected";
   // The call is over when the voice session is gone or the patient hung up in text mode; only "get the evaluation" remains.
   const callOver = (mode === "voice" && !voiceUp) || (mode === "text" && hungUp);
+  useEffect(() => {
+    if (callOver) setEndedAt((t) => t ?? Date.now());
+  }, [callOver]);
 
   return (
     <Shell width="max-w-[1440px]" back={{ href: "/app", label: "Другой пациент" }}>
@@ -256,6 +266,9 @@ function Call({ id }: { id: string }) {
                           : "Микрофон выключен: нажмите, чтобы говорить"
                       : "Текстовый режим"}
                 </Status>
+                {attempt.current && (mode === "voice" || mode === "text") && (
+                  <CallTimer mode={mode} startedAt={attempt.current.startedAt} endedAt={endedAt} replies={transcript.filter((t) => t.role === "user").length} />
+                )}
                 <button onClick={finish} disabled={finishing} className="btn btn-light shrink-0">
                   {finishing ? "Оцениваем… 30–60 с" : callOver ? "Получить оценку" : "Завершить звонок"}
                 </button>
