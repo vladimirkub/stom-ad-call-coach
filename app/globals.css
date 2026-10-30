@@ -23,7 +23,7 @@
 @container (min-height: 195px) { .fit-card .fit-desc { -webkit-line-clamp: 3; } }
 @container (min-height: 224px) { .fit-card .fit-tag { display: flex; } }
 @media (max-height: 50rem) {
-  @container (min-height: 150px) { .fit-card .fit-desc { display: -webkit-box; -webkit-line-clamp: 1; } }
+  @container (min-height: 149px) { .fit-card .fit-desc { display: -webkit-box; -webkit-line-clamp: 1; } }
   @container (min-height: 170px) { .fit-card .fit-desc { -webkit-line-clamp: 2; } }
   @container (min-height: 191px) { .fit-card .fit-desc { -webkit-line-clamp: 3; } }
   @container (min-height: 220px) { .fit-card .fit-tag { display: flex; } }

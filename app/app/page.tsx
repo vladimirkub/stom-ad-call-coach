@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PatientGrid, { PatientStats } from "../patient-grid";
+import AgencyBanner from "../agency-banner";
 import KbBadge from "../kb-badge";
 import { Brand } from "../ui";
 import { ArrowUpRight, Calculator, Phone, Spark } from "../icons";
@@ -10,27 +11,29 @@ const TOOLS = [
 ];
 
 // Workspace: everything fits one screen on desktop (nav + headline + bento that fills the height). Below `lg` it stacks and scrolls.
-// The two tools close the 4×3 patient grid; the virtual operator lines up with the grid, beside the headline row left empty.
+// The page grid is the patients' 4 columns plus the operator column, with the same gap, so edges line up: the agency
+// banner spans the headline row from the 4th patient column to the operator column's right edge; the headline keeps to
+// the first 3 columns.
 export default function Workspace() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] min-[1800px]:max-w-[1680px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:gap-4 lg:h-[max(560px,calc(100dvh-34px))] low:gap-3 lg:flex-none lg:overflow-hidden lg:px-6">
-      <nav className="rise w-fit">
+      <nav className="rise flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <Brand />
+        <PatientStats />
       </nav>
 
-      <div className="grid min-h-0 flex-1 gap-x-5 gap-y-4 low:gap-y-3 lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)]">
-        <section aria-labelledby="trainer" className="flex min-h-0 flex-col gap-4 lg:col-span-9 lg:row-span-2 lg:grid lg:grid-rows-subgrid">
+      <div className="grid min-h-0 flex-1 gap-x-3 gap-y-4 low:gap-y-3 lg:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.35fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <section aria-labelledby="trainer" className="flex min-h-0 flex-col gap-4 lg:col-span-4 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
           <header className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-2" style={{ animationDelay: "60ms" }}>
-            <div className="max-w-[60ch] lg:max-w-none">
+            <div className="max-w-[60ch] lg:max-w-[calc(75%-15px)]">
               <p className="text-xs font-medium text-accent">Режим 1 · вы оператор</p>
-              <h1 id="trainer" className="mt-1.5 text-3xl font-semibold leading-[1.05] tracking-[-0.03em] text-balance lg:text-[2.25rem] short:text-[1.75rem] low:mt-1 low:text-2xl">
+              <h1 id="trainer" className="mt-1.5 text-3xl font-semibold leading-[1.05] tracking-[-0.03em] text-balance lg:text-[min(2.25rem,2.4vw)] short:text-[min(1.75rem,2.4vw)] low:mt-1">
                 Позвоните пациенту и запишите на приём
               </h1>
-              <p className="mt-2 text-sm text-pretty text-slate-400 short:hidden">
+              <p className="mt-2 text-sm text-pretty text-slate-400 short:mt-1 short:text-[13px] low:text-xs">
                 Пациента играет ИИ. Отработайте возражение голосом или текстом, а после звонка получите оценку по чек-листу.
               </p>
             </div>
-            <PatientStats />
           </header>
           <PatientGrid>
             {TOOLS.map((t, i) => (
@@ -44,9 +47,9 @@ export default function Workspace() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-ink-950 lg:h-9 lg:w-9 short:h-8 short:w-8">
                     <t.Icon className="h-5 w-5" />
                   </span>
-                  <h3 className="mt-4 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:text-[15px] low:text-sm">{t.title}</h3>
+                  <h3 className="mt-4 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:text-[15px] low:mt-1.5 low:text-sm">{t.title}</h3>
                   <p className="fit-desc mt-2 text-[13px] leading-relaxed text-pretty text-slate-400 lg:mt-1.5 lg:text-[12.5px]">{t.text}</p>
-                  <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent lg:pt-2">
+                  <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 transition-colors duration-500 group-hover:text-accent lg:pt-2 low:pt-1">
                     Открыть
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950 low:h-6 low:w-6">
                       <ArrowUpRight className="h-3.5 w-3.5" />
@@ -58,7 +61,9 @@ export default function Workspace() {
           </PatientGrid>
         </section>
 
-        <section aria-label="Виртуальный оператор и база знаний" className="flex min-h-0 flex-col gap-4 lg:col-span-3 lg:row-span-2 lg:grid lg:grid-rows-subgrid">
+        <AgencyBanner className="z-10 lg:col-start-4 lg:col-end-6 lg:row-start-1 lg:self-stretch" />
+
+        <section aria-label="Виртуальный оператор и база знаний" className="flex min-h-0 flex-col gap-4 lg:col-span-1 lg:col-start-5 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
           <div className="grid min-h-0 flex-1 gap-3 lg:row-start-2 lg:grid-rows-[1fr_auto] low:gap-2.5">
             <Link
               href="/operator"

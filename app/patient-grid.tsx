@@ -38,7 +38,7 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
   useEffect(() => setHistory(getHistory()), []);
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[repeat(3,minmax(0,1fr))] low:gap-2.5">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[repeat(3,minmax(0,1fr))]">
       {scenarios.map((s, i) => {
         const lead = clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "";
         const tries = history.filter((h) => h.scenarioId === s.id);
@@ -75,10 +75,10 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
                 <span className="h-1 w-1 shrink-0 rounded-full bg-accent/70" />
                 <span className="truncate">{s.tag}</span>
               </p>
-              <h3 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:line-clamp-2 lg:text-[15px] low:text-sm">{quote(s.title)}</h3>
+              <h3 className="mt-1 text-[17px] font-semibold leading-snug tracking-tight text-balance text-slate-50 lg:mt-2.5 lg:line-clamp-2 lg:text-[15px] low:mt-1.5 low:text-sm">{quote(s.title)}</h3>
               <p className="fit-desc mt-2 line-clamp-3 text-[13px] leading-relaxed text-pretty text-slate-400 lg:mt-1.5 lg:text-[12.5px]">{lead || "\u00a0"}</p>
 
-              <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 lg:pt-2 transition-colors duration-500 group-hover:text-accent">
+              <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 lg:pt-2 low:pt-1 transition-colors duration-500 group-hover:text-accent">
                 Позвонить
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] low:h-6 low:w-6 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
                   <ArrowUpRight className="h-3.5 w-3.5" />
@@ -93,7 +93,7 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
   );
 }
 
-// Summary line for the section header: attempts and best score across all patients.
+// Summary line in the workspace's top bar: attempts and average score across all patients (nothing before the first call).
 type Progress = { count: number; average: number | null; last7: { count: number; average: number | null }; change7: number | null };
 
 /** The trainee's own progress from the server: all evaluated calls, average score, and the trend over the last 7 days. */
@@ -106,7 +106,7 @@ export function PatientStats() {
       .catch(() => null);
   }, []);
   if (!p) return null;
-  if (p.count === 0) return <p className="shrink-0 text-xs text-slate-500">Пока нет оценённых звонков</p>;
+  if (p.count === 0) return null;
   const trend = p.change7;
   return (
     <dl className="flex shrink-0 items-baseline gap-4 text-xs tabular-nums text-slate-500" aria-label="Мой прогресс">
