@@ -58,22 +58,54 @@ ${siteFactsFromFacts(facts)}${direction ? directionTask(direction) : ""}`;
   return direction ? { ...fit, direction } : fit;
 }
 
-/** Fits all patients to the clinic's approved legend in the background; the legend row tracks the progress. */
+const g = globalThis as { __fitting?: Set<number>; __fitTried?: Map<number, number> };
+const fitting = (g.__fitting ??= new Set());
+const fitTried = (g.__fitTried ??= new Map());
+const RETRY_FAILED_MS = 15 * 60_000;
+
+/**
+ * Fits all patients to the clinic's approved legend in the background; the legend row tracks the progress. Patients that
+ * fit are kept even if another one fails, so the cards show what is ready and a later run fills in the rest.
+ */
 export function startPersonaFit(clinicId: number, fit: typeof fitPersona = fitPersona) {
   const row = db().prepare("SELECT id, facts FROM legends WHERE clinic_id = ? AND status = 'approved'").get(clinicId) as { id: number; facts: string } | undefined;
   if (!row) throw new Error("Нет утверждённой легенды");
   db().prepare("UPDATE legends SET personas_status = 'pending', personas_error = NULL WHERE id = ?").run(row.id);
   const facts = JSON.parse(row.facts) as Fact[];
   const plan = assignDirections(getDirections(clinicId));
+  fitting.add(clinicId);
+  fitTried.set(clinicId, Date.now());
   void (async () => {
     try {
-      const fitted = await Promise.all(pub.map(async (s) => [s.id, await fit(s.id, facts, plan[s.id])] as const));
-      db().prepare("UPDATE legends SET personas = ?, personas_status = 'ready' WHERE id = ?").run(JSON.stringify(Object.fromEntries(fitted)), row.id);
-    } catch (e) {
-      console.error("[persona-fit]", e);
-      db().prepare("UPDATE legends SET personas_status = 'failed', personas_error = ? WHERE id = ?").run(e instanceof Error ? e.message.slice(0, 300) : "Не удалось", row.id);
+      const results = await Promise.allSettled(pub.map(async (s) => [s.id, await fit(s.id, facts, plan[s.id])] as const));
+      const fitted = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      const failed = results.flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
+      if (failed.length) console.error("[persona-fit]", failed[0]);
+      const error = failed.length ? `Не подстроено пациентов: ${failed.length}. ${failed[0] instanceof Error ? failed[0].message : ""}`.slice(0, 300) : null;
+      db()
+        .prepare("UPDATE legends SET personas = ?, personas_status = ?, personas_error = ? WHERE id = ?")
+        .run(JSON.stringify(Object.fromEntries(fitted)), failed.length ? "failed" : "ready", error, row.id);
+    } finally {
+      fitting.delete(clinicId);
     }
   })();
+}
+
+/**
+ * Starts the fit when the approved legend's patients are missing: never fitted (approved before fitting existed), a
+ * patient added since, a fit cut short by a restart, or a failed one (retried at most every 15 minutes).
+ */
+export function ensurePersonaFit(clinicId: number, now = Date.now(), fit: typeof fitPersona = fitPersona): boolean {
+  const row = db().prepare("SELECT personas, personas_status AS status FROM legends WHERE clinic_id = ? AND status = 'approved'").get(clinicId) as
+    | { personas: string; status: string | null }
+    | undefined;
+  if (!row || fitting.has(clinicId)) return false;
+  const fitted = JSON.parse(row.personas) as Record<string, unknown>;
+  const complete = row.status === "ready" && pub.every((s) => fitted[s.id]);
+  if (complete) return false;
+  if (row.status === "failed" && now - (fitTried.get(clinicId) ?? 0) < RETRY_FAILED_MS) return false;
+  startPersonaFit(clinicId, fit);
+  return true;
 }
 
 export function personaFitState(clinicId: number) {

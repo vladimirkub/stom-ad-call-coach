@@ -14,6 +14,8 @@ export type ClinicContext = {
   memo: string[];
   siteFacts: string;
   personas: Record<string, PersonaFit>;
+  /** Patients fitted to this clinic's legend; the rest are the demo clinic's until their fit is ready. */
+  fittedIds: string[];
 };
 
 type Private = { hiddenObjection: string; showUpRisk: string; situation: string; concerns: string };
@@ -53,9 +55,9 @@ export function siteFactsFromFacts(facts: Fact[]): string {
   ].join("\n");
 }
 
-const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, personas: defaultPersonas() };
+const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, personas: defaultPersonas(), fittedIds: [] };
 
-/** The context for a clinic (null: the shared demo). Adapted patients are used once their adaptation for this version is ready. */
+/** The context for a clinic (null: the shared demo). Each patient fitted to this legend version replaces the demo one. */
 export function clinicContext(clinicId: number | null | undefined): ClinicContext {
   if (clinicId == null) return DEFAULT;
   const row = db().prepare("SELECT version, facts, personas, personas_status FROM legends WHERE clinic_id = ? AND status = 'approved'").get(clinicId) as
@@ -63,13 +65,14 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
     | undefined;
   if (!row) return { ...DEFAULT, clinicId };
   const facts = JSON.parse(row.facts) as Fact[];
-  const fitted = row.personas_status === "ready" ? (JSON.parse(row.personas) as Record<string, PersonaFit>) : {};
+  const fitted = JSON.parse(row.personas) as Record<string, PersonaFit>;
   return {
     clinicId,
     legendVersion: row.version,
     memo: memoFromFacts(facts),
     siteFacts: siteFactsFromFacts(facts),
     personas: { ...DEFAULT.personas, ...fitted },
+    fittedIds: Object.keys(fitted),
   };
 }
 

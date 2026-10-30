@@ -4,11 +4,12 @@ import {
   OFFERS_SOURCE, SECTIONS, approveDraft, approvedLegend, compareFacts, discardDraft, expireStaleAnalyses, getOffers, getSites, legendHistory, saveDraft, setOffers,
   setSites, startAnalysis, workingLegend,
 } from "@/lib/legend";
-import { personaFitState, startPersonaFit } from "@/lib/persona-fit";
+import { ensurePersonaFit, personaFitState, startPersonaFit } from "@/lib/persona-fit";
 import { DIRECTIONS, assignDirections, getDirections, setDirections, suggestDirections } from "@/lib/directions";
 
 function state(clinicId: number) {
   expireStaleAnalyses();
+  ensurePersonaFit(clinicId);
   const approved = approvedLegend(clinicId);
   const working = workingLegend(clinicId);
   return {

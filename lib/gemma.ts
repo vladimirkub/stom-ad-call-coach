@@ -1,5 +1,5 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 // Paid Gemini models (Gemma 4 has no paid tier, so its free-tier limits broke with a few concurrent users).
 // "fast" serves every live turn (patient chat, live checklist), "smart" the one-off analyses (evaluation, script, learning).
@@ -42,6 +42,8 @@ export async function gemmaText(opts: {
   tier?: Tier;
   /** Ask the API for strict JSON (no markdown, quotes escaped); the caller still validates the shape. */
   json?: boolean;
+  /** JSON Schema the answer must follow (structured output): the API then cannot return malformed JSON. */
+  jsonSchema?: object;
 }) {
   const ai = client();
   let lastError: unknown;
@@ -54,7 +56,8 @@ export async function gemmaText(opts: {
           systemInstruction: opts.system,
           ...(opts.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
           ...(opts.thinking === "minimal" ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } } : {}),
-          ...(opts.json ? { responseMimeType: "application/json" } : {}),
+          ...(opts.json || opts.jsonSchema ? { responseMimeType: "application/json" } : {}),
+          ...(opts.jsonSchema ? { responseJsonSchema: opts.jsonSchema } : {}),
         },
       });
       const text = answerText(response).trim();
@@ -80,6 +83,20 @@ export function extractJson(raw: string): unknown {
   return JSON.parse(body.slice(start, end + 1));
 }
 
+const schemas = new WeakMap<object, object>();
+/** The zod schema as JSON Schema for the API; null if zod cannot express it (then plain JSON mode is used). */
+function jsonSchemaOf(schema: ZodType): object | undefined {
+  if (!schemas.has(schema)) {
+    try {
+      const { $schema: _, ...rest } = z.toJSONSchema(schema) as Record<string, unknown>;
+      schemas.set(schema, rest);
+    } catch {
+      return undefined;
+    }
+  }
+  return schemas.get(schema);
+}
+
 export async function gemmaJson<T>(opts: { system: string; prompt: string; schema: ZodType<T>; thinking?: "minimal" | "default"; maxOutputTokens?: number; tier?: Tier }): Promise<T> {
   let lastError = "";
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -89,8 +106,10 @@ export async function gemmaJson<T>(opts: { system: string; prompt: string; schem
       contents: [{ role: "user", text: prompt }],
       maxOutputTokens: opts.maxOutputTokens ?? 16384,
       tier: opts.tier,
-      // Prompt-only JSON broke on unescaped quotes inside Russian text (e.g. "Все зубы за 1 день"); JSON mode prevents that.
+      // Prompt-only JSON broke on unescaped quotes inside Russian text (e.g. "Все зубы за 1 день"), and JSON mode alone
+      // still let some answers through malformed (a patient fit failed 3 times in a row); the schema constrains the output.
       json: true,
+      jsonSchema: jsonSchemaOf(opts.schema),
       // Minimal thinking by default: on gemini-3.6-flash evaluations took 3-8 s instead of 10-31 s and scored the six
       // benchmark calls as before (strong 90-94, medium 25-32, weak 0). GEMINI_JSON_THINKING=on restores full thinking.
       thinking: opts.thinking ?? (process.env.GEMINI_JSON_THINKING === "on" ? "default" : "minimal"),
