@@ -7,6 +7,7 @@ import { useClinicData } from "../../clinic-data";
 import scenarios from "@/lib/scenarios-public.json";
 import { reportCall, startSessionFast } from "@/lib/voice";
 import type { Turn } from "@/lib/schemas";
+import { TEMPO_NOTES, TEMPO_NOTE_TEXT } from "@/lib/tempo";
 import { Shell, Panel } from "../../ui";
 import { CallBar, CallTimer, MicButton, Status } from "../../call-ui";
 import { Book, ListCheck, Phone, Target } from "../../icons";
@@ -39,6 +40,7 @@ function Call({ id }: { id: string }) {
   const attempt = useRef<{ id: string; startedAt: number } | null>(null);
   const beginAttempt = () => {
     attempt.current = { id: crypto.randomUUID(), startedAt: Date.now() };
+    notesSent.current = new Set();
     setEndedAt(null);
   };
   // When the call itself ended (not when the evaluation was asked for): the call's length for the tempo check.
@@ -55,6 +57,7 @@ function Call({ id }: { id: string }) {
     },
     onError: (message) => setError(`Ошибка голоса: ${message}`),
     onDisconnect: (details) => {
+      setEndedAt((t) => t ?? Date.now());
       if (details.reason === "error") setError(`Голосовое соединение потеряно: ${details.message}`);
       // The patient can end the call herself (end_call tool) when the operator loses her trust.
       if (details.reason === "agent") setHungUp(true);
@@ -159,15 +162,56 @@ function Call({ id }: { id: string }) {
 
   const live = mode !== "idle";
   const { done, checking } = useLiveChecklist(id, transcript, live && !finishing);
+  // On phones the patient's voice from the speaker reaches the microphone and echo cancellation often misses it: the
+  // patient then hears herself as the operator and keeps interrupting herself. So on touch devices the call is
+  // half-duplex: the microphone is off while the patient speaks and comes back a moment after she stops.
+  const [userMuted, setUserMuted] = useState(false);
+  const [patientTalking, setPatientTalking] = useState(false);
+  const halfDuplex = useHalfDuplex();
+  useEffect(() => {
+    if (conversation.isSpeaking) return setPatientTalking(true);
+    const t = setTimeout(() => setPatientTalking(false), ECHO_TAIL_MS);
+    return () => clearTimeout(t);
+  }, [conversation.isSpeaking]);
+  const autoMuted = halfDuplex && patientTalking;
+  // Time notes to the voice patient (lib/tempo.ts): at 3 minutes, "one minute left" at 4, goodbye before the 5-minute cap.
+  // Text mode gets the same notes from the server, by the operator's replies.
+  const notesSent = useRef(new Set<string>());
+  const sendNoteRef = useRef(conversation.sendContextualUpdate);
+  sendNoteRef.current = conversation.sendContextualUpdate;
+  const voiceLive = mode === "voice" && conversation.status === "connected";
+  useEffect(() => {
+    if (!voiceLive) return;
+    const tick = setInterval(() => {
+      const started = attempt.current?.startedAt;
+      if (!started) return;
+      const elapsed = (Date.now() - started) / 1000;
+      for (const n of TEMPO_NOTES) {
+        if (elapsed >= n.voiceSeconds && !notesSent.current.has(n.stage)) {
+          notesSent.current.add(n.stage);
+          sendNoteRef.current(TEMPO_NOTE_TEXT[n.stage]);
+        }
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [voiceLive]);
+  const setMutedRef = useRef(conversation.setMuted);
+  setMutedRef.current = conversation.setMuted;
+  const connected = conversation.status === "connected";
+  useEffect(() => {
+    if (connected) setMutedRef.current(userMuted || autoMuted);
+  }, [connected, userMuted, autoMuted]);
   const micOn = !conversation.isMuted;
   const speaking = conversation.isSpeaking;
   // Voice controls only make sense while the voice session is up; after a hang-up only "get the evaluation" remains.
   const voiceUp = mode === "voice" && conversation.status === "connected";
   // The call is over when the voice session is gone or the patient hung up in text mode; only "get the evaluation" remains.
   const callOver = (mode === "voice" && !voiceUp) || (mode === "text" && hungUp);
+  // Text mode ends when the patient hangs up; voice ends in onDisconnect (not on "not connected", which is also true
+  // for a moment right after the call starts and would freeze the timer at 0:00).
   useEffect(() => {
-    if (callOver) setEndedAt((t) => t ?? Date.now());
-  }, [callOver]);
+    if (mode === "text" && hungUp) setEndedAt((t) => t ?? Date.now());
+  }, [mode, hungUp]);
 
   return (
     <Shell width="max-w-[1440px]" back={{ href: "/app", label: "Другой пациент" }}>
@@ -231,6 +275,11 @@ function Call({ id }: { id: string }) {
               <button onClick={startText} className="btn btn-ghost">Текстовый режим</button>
             </div>
           )}
+          {!live && halfDuplex && (
+            <p className="mb-4 text-xs text-pretty text-slate-500">
+              На телефоне лучше звонить в наушниках. Без них микрофон выключается, пока пациент говорит, чтобы он не слышал сам себя: дослушайте реплику и отвечайте.
+            </p>
+          )}
 
           <section aria-label="Транскрипт" className="flex min-h-64 flex-1 flex-col gap-2.5 rounded-3xl bg-ink-900/60 p-4 ring-1 ring-inset ring-white/[0.06]">
             {transcript.length === 0 && (
@@ -250,7 +299,7 @@ function Call({ id }: { id: string }) {
           {live && (
             <CallBar inset>
               <div className="flex items-center gap-3">
-                {voiceUp && <MicButton on={micOn} onToggle={() => conversation.setMuted(micOn)} />}
+                {voiceUp && <MicButton on={!userMuted && micOn} onToggle={() => setUserMuted((m) => !m)} />}
                 <Status live={voiceUp && (speaking || micOn)}>
                   {callOver
                     ? finishing
@@ -260,8 +309,12 @@ function Call({ id }: { id: string }) {
                         : "Звонок завершён. Получите оценку разговора."
                     : mode === "voice"
                       ? speaking
-                        ? `${scenario.short} говорит…`
-                        : micOn
+                        ? halfDuplex
+                          ? `${scenario.short} говорит, дослушайте…`
+                          : `${scenario.short} говорит…`
+                        : autoMuted && !userMuted
+                          ? "Секунду, сейчас включится микрофон"
+                          : micOn
                           ? "Микрофон включён: говорите"
                           : "Микрофон выключен: нажмите, чтобы говорить"
                       : "Текстовый режим"}
@@ -322,4 +375,14 @@ function Memo({ memo, className = "" }: { memo?: string[]; className?: string })
       ))}
     </ul>
   );
+}
+
+/** The pause after the patient stops speaking before the phone's microphone comes back: the speaker's echo dies out. */
+const ECHO_TAIL_MS = 500;
+
+/** Touch devices (phones, tablets) run calls half-duplex; desktops keep echo cancellation and can interrupt. */
+function useHalfDuplex() {
+  const [on, setOn] = useState(false);
+  useEffect(() => setOn(window.matchMedia("(pointer: coarse)").matches), []);
+  return on;
 }
