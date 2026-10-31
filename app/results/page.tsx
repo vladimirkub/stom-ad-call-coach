@@ -6,6 +6,7 @@ import { SKILLS } from "@/lib/scoring";
 import { addEntry, type HistoryEntry } from "@/lib/history";
 import type { EvaluationResult, ModelScript, Turn } from "@/lib/schemas";
 import { Panel, PanelTitle, PageHeader, Shell } from "../ui";
+import { useHome } from "../home-link";
 import { Alert, ArrowUpRight, Book, Chart, Check, Cross, Door, Keyhole, Spark, Target } from "../icons";
 
 type Saved = {
@@ -26,6 +27,7 @@ export default function Results() {
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [learning, setLearning] = useState(false);
   const [learnError, setLearnError] = useState<string | null>(null);
+  const home = useHome();
 
   useEffect(() => {
     try {
@@ -120,7 +122,7 @@ export default function Results() {
         <PageHeader eyebrow="Разбор" title="Сессия не найдена">
           Результаты хранятся только в этой вкладке. Пройдите новый звонок, чтобы получить разбор.
         </PageHeader>
-        <Link href="/app" className="btn btn-primary w-fit">Выбрать пациента</Link>
+        <Link href={home} className="btn btn-primary w-fit">{home === "/call" ? "Позвонить пациенту" : "Выбрать пациента"}</Link>
       </Shell>
     );
   }
@@ -134,7 +136,7 @@ export default function Results() {
   const bullet = <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-current opacity-60" />;
 
   return (
-    <Shell back={{ href: "/app", label: "На главную" }}>
+    <Shell back={{ href: home, label: "На главную" }}>
       <div className="mt-8 space-y-4">
         <Panel delay={40} tone="accent" innerClassName="relative overflow-hidden p-6 sm:p-8">
           <div aria-hidden className="pointer-events-none absolute -top-24 -right-20 h-64 w-64 rounded-full bg-accent/[0.12] blur-3xl" />
@@ -369,7 +371,7 @@ export default function Results() {
         </details>
 
         <div className="flex flex-wrap gap-3 pt-2">
-          <Link href="/app" className="btn btn-primary px-6 py-3">{virtual || real ? "На главную" : "Другой пациент или ещё раз"}</Link>
+          <Link href={home} className="btn btn-primary px-6 py-3">{virtual || real ? "На главную" : home === "/call" ? "Следующий звонок" : "Другой пациент или ещё раз"}</Link>
           {virtual && <Link href="/operator" className="btn btn-ghost px-6 py-3">Ещё один звонок оператора</Link>}
           {!real && data.scenarioId && <Link href={`/challenge/${data.scenarioId}`} className="btn btn-ghost px-6 py-3">Ещё раз с этим пациентом</Link>}
         </div>

@@ -5,6 +5,7 @@ import KbBadge from "../kb-badge";
 import { Brand } from "../ui";
 import { ArrowUpRight, Calculator, Phone, Spark } from "../icons";
 import { FEATURES } from "@/lib/features";
+import { RememberHome } from "../home-link";
 
 const TOOLS = [
   { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone, on: FEATURES.realCalls },
@@ -25,6 +26,7 @@ function Soon() {
 export default function Workspace() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] min-[1800px]:max-w-[1680px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:gap-4 lg:h-[max(560px,calc(100dvh-34px))] low:gap-3 lg:flex-none lg:overflow-hidden lg:px-6">
+      <RememberHome home="/app" />
       <nav className="rise flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <Brand />
         <PatientStats />

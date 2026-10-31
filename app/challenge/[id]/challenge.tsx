@@ -13,6 +13,7 @@ import { CallBar, CallTimer, MicButton, Status } from "../../call-ui";
 import { Book, ListCheck, Phone, Target } from "../../icons";
 import { CHECKLIST_TOTAL, LiveChecklist, useLiveChecklist } from "../../live-checklist";
 import { context, initials, quote, years } from "../../patient-grid";
+import { useHome } from "../../home-link";
 
 type Mode = "idle" | "voice" | "text";
 
@@ -36,6 +37,7 @@ function Call({ id }: { id: string }) {
   const [draft, setDraft] = useState("");
   const [hungUp, setHungUp] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const home = useHome();
   // Set when the call starts; the evaluation saves the call to the trainee's history under this id.
   const attempt = useRef<{ id: string; startedAt: number } | null>(null);
   const beginAttempt = () => {
@@ -90,6 +92,16 @@ function Call({ id }: { id: string }) {
       setBusy(false);
     }
   }
+
+  // The one-button page (/call) opens the call with ?start=voice: dial at once, once, and drop the flag from the address.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || new URLSearchParams(window.location.search).get("start") !== "voice") return;
+    autoStarted.current = true;
+    router.replace(`/challenge/${id}`);
+    void startVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function startText() {
     setError(null);
@@ -214,7 +226,7 @@ function Call({ id }: { id: string }) {
   }, [mode, hungUp]);
 
   return (
-    <Shell width="max-w-[1440px]" back={{ href: "/app", label: "Другой пациент" }}>
+    <Shell width="max-w-[1440px]" back={home === "/call" ? { href: "/call", label: "На главную" } : { href: "/app", label: "Другой пациент" }}>
       <header className="rise mt-8 mb-5 flex items-start gap-4" style={{ animationDelay: "60ms" }}>
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.06] text-lg font-semibold tracking-tight text-slate-100 ring-1 ring-white/10">
           {initials(scenario.name)}
