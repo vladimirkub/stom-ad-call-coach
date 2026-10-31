@@ -31,7 +31,7 @@ export const RUBRIC: RubricItem[] = [
   { id: "explainedFormat", skill: "booking", label: "Объяснил, что будет на приёме (формат, бесплатная диагностика)" },
   { id: "gotAgreement", skill: "booking", label: "Получил явное согласие на конкретную запись" },
   { id: "clearNextStep", skill: "booking", label: "Закончил чётким следующим шагом, а не «я подумаю»" },
-  { id: "onTime", skill: "booking", label: "Записал пациента за 2,5 минуты (в тексте — за 8 реплик)", scenarioOnly: true, auto: true },
+  { id: "onTime", skill: "booking", label: "Записал пациента за 3 минуты (в тексте — за 10 реплик)", scenarioOnly: true, auto: true },
 
   { id: "repeatedDetails", skill: "showUp", label: "Повторил дату, время и формат приёма" },
   { id: "route", skill: "showUp", label: "Объяснил, как добраться, или пообещал отправить адрес" },

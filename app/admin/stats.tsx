@@ -263,7 +263,7 @@ function ClinicView({ id, go }: { id: number; go: (v: StatsView) => void }) {
                   <th className="px-3 py-2.5 text-right font-medium">За неделю</th>
                   <th className="px-3 py-2.5 text-right font-medium">Записали</th>
                   <th className="px-3 py-2.5 text-right font-medium" title="Средняя длина голосового звонка">Средний звонок</th>
-                  <th className="px-3 py-2.5 text-right font-medium" title="Доля голосовых звонков не дольше 2,5 минут">В 2,5 мин</th>
+                  <th className="px-3 py-2.5 text-right font-medium" title="Доля голосовых звонков не дольше 3 минут">В 3 мин</th>
                   <th className="px-5 py-2.5 font-medium">Последняя тренировка</th>
                 </tr>
               </thead>

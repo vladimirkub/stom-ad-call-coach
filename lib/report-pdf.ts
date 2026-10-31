@@ -202,7 +202,7 @@ export async function clinicReportPdf(clinicId: number, now = Date.now()) {
       { title: "За неделю", width: 54, align: "right" },
       { title: "Записали", width: 50, align: "right" },
       { title: "Звонок", width: 44, align: "right" },
-      { title: "В 2,5 мин", width: 52, align: "right" },
+      { title: "В 3 мин", width: 52, align: "right" },
       { title: "Последняя тренировка", width: W - 396 },
     ],
     s.users.map((u) => [

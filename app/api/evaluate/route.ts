@@ -72,7 +72,7 @@ ${text}
     if (ev.unsupportedClaims.length > 0) set("noFalsePromises", false);
     if (!real) set("uncoveredHidden", ev.objectionUncovered);
     if (!ev.appointmentBooked) set("gotAgreement", false);
-    // Tempo: booked within 2.5 minutes in voice, or within 8 operator replies in text.
+    // Tempo: booked within the target (lib/tempo.ts): 3 minutes in voice, 10 operator replies in text.
     const attempt = scenario ? parseAttempt(body?.attempt) : null;
     const replies = transcript.filter((t) => t.role === "user").length;
     const tempoOk = !!attempt && ev.appointmentBooked && onTime(attempt.mode, attempt.durationS ?? Infinity, replies);

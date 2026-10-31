@@ -4,6 +4,7 @@ import { TranscriptSchema } from "@/lib/schemas";
 import { gemmaText } from "@/lib/gemma";
 import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext } from "@/lib/session";
+import { TEMPO_NOTE_TEXT, textTempoStage } from "@/lib/tempo";
 
 // Text mode has no tools: the patient hangs up by writing end_call, which the page turns into "the patient hung up".
 const TEXT_HANG_UP =
@@ -17,9 +18,12 @@ export async function POST(req: Request) {
   const scenario = getScenario(body?.scenarioId, await currentClinicContext());
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
+  // The same time notes as in voice, by the operator's replies so far (lib/tempo.ts).
+  const stage = textTempoStage(parsed.data.filter((t) => t.role === "user").length);
+  const note = stage ? `\n\n${TEMPO_NOTE_TEXT[stage]}` : "";
   try {
     const raw = await gemmaText({
-      system: `${scenario.prompt}\n\n${TEXT_HANG_UP}`,
+      system: `${scenario.prompt}\n\n${TEXT_HANG_UP}${note}`,
       contents: parsed.data.map((t) => ({ role: t.role === "agent" ? ("model" as const) : ("user" as const), text: t.text })),
       // A live reply: ~1 s without extended thinking, and the persona prompt already carries the reasoning rules.
       thinking: "minimal",
