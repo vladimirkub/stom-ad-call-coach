@@ -64,3 +64,11 @@ test("a fit cut short by a restart, or a patient added later, is fitted again", 
   assert.equal(ensurePersonaFit(clinicId, Date.now(), fake()), true, "valentina is missing");
   await settle(clinicId);
 });
+
+test("only the four patients short of money ask about installments", async () => {
+  const { INSTALLMENT_ASKERS, limitInstallments } = await import("../lib/persona-fit.ts");
+  assert.deepEqual([...INSTALLMENT_ASKERS].sort(), ["artem", "elena", "nikolay", "olga"]);
+  const concerns = "- «Сколько стоит?» (на сайте: от 10 490 ₽, рассрочка от 1 972 ₽/мес)\n- «А рассрочка у вас есть? (на сайте этого нет)»\n- «Можно в кредит?»\n- «Это больно?»";
+  assert.equal(limitInstallments("dmitry", concerns), "- «Сколько стоит?» (на сайте: от 10 490 ₽, рассрочка от 1 972 ₽/мес)\n- «Это больно?»");
+  assert.equal(limitInstallments("artem", concerns), concerns);
+});

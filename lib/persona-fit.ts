@@ -23,13 +23,29 @@ const SYSTEM = `Ты сценарист тренажёра для админис
 Что сохранить без изменений: имя, возраст, пол, характер, манеру речи, семью и занятость, главный страх и психологию скрытой причины, риск неявки. Сохрани и то, как пациент вышел на клинику (реклама, совет знакомых, ночной поиск с острой болью, заявка за другого человека), и жизненные детали его истории (старый протез, ребёнок, свадьба), если они не противоречат направлению; меняй только услуги, цены и акции. Скрытая причина должна остаться такой же по сути (например, страх осложнений, прошлый обман, конфликт в семье), меняются только детали, привязанные к услуге.
 Что переписать:
 - situation: 2–4 предложения от второго лица («Ты…»): с какой проблемой пациент пришёл и что именно увидел в рекламе или на сайте этой клиники. Не начинай с имени и возраста: они уже есть в описании пациента. Если клиника делает то же лечение, оставь проблему пациента; если нет, выбери самую близкую услугу из фактов клиники, которая подходит этому человеку по возрасту и характеру.
-- concerns: список из 3–5 строк, каждая начинается с «- »: о чём пациент спросит или чем засомневается. Используй ТОЛЬКО цены, акции, сроки, рассрочку и обещания из фактов клиники, цитируй их точно. Если в фактах чего-то нет (например, условий рассрочки), пациент может спросить об этом, и в скобках отметь, что на сайте этого нет.
+- concerns: список из 3–5 строк, каждая начинается с «- »: о чём пациент спросит или чем засомневается. Используй ТОЛЬКО цены, акции, сроки, рассрочку и обещания из фактов клиники, цитируй их точно. Если в фактах чего-то нет, пациент может спросить о ОДНОЙ такой вещи, если она важна именно ему, и в скобках отметь, что на сайте этого нет. Про рассрочку и кредит — только как сказано в строке «РАССРОЧКА» у пациента.
 - lead: одно-два предложения для карточки пациента в тренажёре, в стиле «Имя, возраст. Заявка по рекламе …. Говорит …».
 - hiddenObjection и showUpRisk: те же по смыслу, что у исходного пациента, с деталями этой клиники, в третьем лице.
 Не выдумывай цен, акций, врачей и услуг, которых нет в фактах. Пиши по-русски.
 Ответь ТОЛЬКО JSON без markdown: {"lead":"...","situation":"...","concerns":"- ...\\n- ...","hiddenObjection":"...","showUpRisk":"..."}`;
 
 type Private = { prompt: string; hiddenObjection: string; showUpRisk: string; situation: string; concerns: string };
+
+/**
+ * Patients for whom money is a real obstacle: only they ask about installments or credit. Asked by everyone, the question
+ * made every call about installments, and offering them unasked can offend a patient (clinic feedback, Nov 2026).
+ */
+export const INSTALLMENT_ASKERS = new Set(["artem", "elena", "olga", "nikolay"]);
+const INSTALLMENT = /рассроч|кредит/i;
+
+/**
+ * Keeps installment questions only for the patients above, whatever the model wrote. A site price quoted in brackets
+ * ("рассрочка от 1 972 ₽/мес") is a fact the patient read, not a question, so it stays.
+ */
+export function limitInstallments(id: string, concerns: string): string {
+  if (INSTALLMENT_ASKERS.has(id)) return concerns;
+  return concerns.split("\n").filter((line) => !INSTALLMENT.test(line.replace(/\([^)]*\)/g, ""))).join("\n");
+}
 
 /** The direction this patient now comes for, which overrides "keep the patient's own problem". */
 function directionTask(key: DirectionKey) {
@@ -51,11 +67,13 @@ ${p.concerns}
 Карточка сейчас: ${open.lead}
 Скрытая причина: ${p.hiddenObjection}
 Риск неявки: ${p.showUpRisk}
+РАССРОЧКА: ${INSTALLMENT_ASKERS.has(id) ? "деньги для этого пациента — реальная трудность, он может спросить о рассрочке или кредите." : "этот пациент НЕ спрашивает о рассрочке и кредите и не жалуется, что ему тяжело заплатить."}
 
 ФАКТЫ НОВОЙ КЛИНИКИ
 ${siteFactsFromFacts(facts)}${direction ? directionTask(direction) : ""}`;
   const fit = await gemmaJson({ system: SYSTEM, prompt, schema: FitSchema, tier: "smart", thinking: "default", maxOutputTokens: 8192 });
-  return direction ? { ...fit, direction } : fit;
+  const out = { ...fit, concerns: limitInstallments(id, fit.concerns) };
+  return direction ? { ...out, direction } : out;
 }
 
 const g = globalThis as { __fitting?: Set<number>; __fitTried?: Map<number, number> };

@@ -40,7 +40,7 @@ export function memoFromFacts(facts: Fact[]): string[] {
     if (items.length) lines.push(`${s.label}: ${items.join("; ")}.`);
   }
   const missing = facts.filter((f) => f.section === "missing").map((f) => f.text.replace(/\.$/, ""));
-  if (missing.length) lines.push(`Чего на сайте НЕТ: ${missing.join("; ")}. Не выдумывайте: уточните у врача на консультации или пришлите в СМС после записи.`);
+  if (missing.length) lines.push(`Чего на сайте НЕТ: ${missing.join("; ")}. Говорите только то, что точно знаете о своей клинике; если не уверены, уточните и пришлите после записи.`);
   return lines;
 }
 
