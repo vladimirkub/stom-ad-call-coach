@@ -12,3 +12,11 @@ export const DIRECTIONS: { key: CallDirection; label: string; hint: string }[] =
 export function parseDirection(raw: unknown): CallDirection {
   return raw === "inbound" ? "inbound" : "outbound";
 }
+
+/**
+ * Sent to the voice patient right after an inbound call connects, before the administrator says anything. Without it
+ * the model, holding no line of its own yet, sometimes took an opening like "алло?" or "кто это?" as a call to it and
+ * answered as the clinic. A contextual update anchors the role; the rule in the prompt alone did not.
+ */
+export const INBOUND_START_NOTE =
+  "Служебная пометка, не произноси: ты ПАЦИЕНТ и сейчас сам звонишь в стоматологическую клинику. Идут гудки, сейчас трубку возьмёт администратор клиники. Всё, что он скажет, говорит клиника; ты отвечаешь как звонящий пациент и никогда не говоришь от имени клиники.";

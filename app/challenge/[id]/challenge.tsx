@@ -15,7 +15,7 @@ import { LiveChecklist, checklistTotal, useLiveChecklist } from "../../live-chec
 import { context, initials, quote, years } from "../../patient-grid";
 import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
-import type { CallDirection } from "@/lib/direction";
+import { INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
 
 type Mode = "idle" | "voice" | "text";
 
@@ -91,6 +91,8 @@ function Call({ id }: { id: string }) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
       await startSessionFast(conversation, body);
+      // Before the administrator's first word: the patient is the caller, not the clinic (lib/direction.ts).
+      if (dir === "inbound") conversation.sendContextualUpdate(INBOUND_START_NOTE);
       beginAttempt();
       setMode("voice");
     } catch (e) {
@@ -349,7 +351,9 @@ function Call({ id }: { id: string }) {
                         : autoMuted && !userMuted
                           ? "Секунду, сейчас включится микрофон"
                           : micOn
-                          ? "Микрофон включён: говорите"
+                          ? inbound && transcript.length === 0
+                            ? "Пациент на линии: поздоровайтесь первым — клиника и ваше имя"
+                            : "Микрофон включён: говорите"
                           : "Микрофон выключен: нажмите, чтобы говорить"
                       : "Текстовый режим"}
                 </Status>
