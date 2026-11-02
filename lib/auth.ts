@@ -8,7 +8,8 @@ export const SESSION_COOKIE = "coach_session";
 export const SESSION_DAYS = 30;
 const SETUP_TTL_MS = 60 * 60 * 1000;
 
-export type Role = "owner" | "trainee";
+/** owner: the whole service; manager: a clinic's head (trains, sees the clinic's analytics); trainee: an administrator. */
+export type Role = "owner" | "manager" | "trainee";
 export type SessionUser = {
   id: number;
   role: Role;
@@ -21,8 +22,9 @@ export type SessionUser = {
 // ---- technical accounts ----
 
 /**
- * Each clinic has a shared "Админ" account (login admin.<clinic>) for its managers, who log in to look around and rarely
- * finish a call. It is not an administrator in training: statistics, reports and seats leave it out; usage still counts it.
+ * Each clinic has a shared "Админ" account (login admin.<clinic>) for its managers; since the manager role it is that
+ * role, and the login rule stays as a safety net. Managers are not administrators in training: statistics, reports and
+ * seats leave them out; usage still counts them.
  */
 export function isTechLogin(login: string): boolean {
   return /^admin\d*\./.test(login);
@@ -136,14 +138,14 @@ export function createTrainee(input: { clinicId: number; firstName: string; last
 
 export function resetPassword(userId: number): string {
   const password = makePassword();
-  const r = db().prepare("UPDATE users SET pass_hash = ?, pass_enc = ? WHERE id = ? AND role = 'trainee'").run(hashPassword(password), encryptSecret(password), userId);
+  const r = db().prepare("UPDATE users SET pass_hash = ?, pass_enc = ? WHERE id = ? AND role IN ('trainee', 'manager')").run(hashPassword(password), encryptSecret(password), userId);
   if (!r.changes) throw new Error("Пользователь не найден");
   db().prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
   return password;
 }
 
 export function setActive(userId: number, active: boolean) {
-  const r = db().prepare("UPDATE users SET active = ? WHERE id = ? AND role = 'trainee'").run(active ? 1 : 0, userId);
+  const r = db().prepare("UPDATE users SET active = ? WHERE id = ? AND role IN ('trainee', 'manager')").run(active ? 1 : 0, userId);
   if (!r.changes) throw new Error("Пользователь не найден");
   if (!active) db().prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
 }
@@ -239,7 +241,21 @@ export function listClinics() {
 
 export function listTrainees(clinicId: number) {
   const rows = db()
-    .prepare("SELECT id, first_name AS firstName, last_name AS lastName, login, pass_enc, active, created_at AS createdAt FROM users WHERE clinic_id = ? AND role = 'trainee' ORDER BY last_name, first_name")
-    .all(clinicId) as { id: number; firstName: string; lastName: string; login: string; pass_enc: string | null; active: number; createdAt: number }[];
-  return rows.map(({ pass_enc, active, ...r }) => ({ ...r, active: !!active, tech: isTechLogin(r.login), password: pass_enc ? decryptSecret(pass_enc) : null }));
+    .prepare(
+      "SELECT id, role, first_name AS firstName, last_name AS lastName, login, pass_enc, active, created_at AS createdAt FROM users WHERE clinic_id = ? AND role IN ('trainee', 'manager') ORDER BY role = 'trainee', last_name, first_name",
+    )
+    .all(clinicId) as { id: number; role: Role; firstName: string; lastName: string; login: string; pass_enc: string | null; active: number; createdAt: number }[];
+  return rows.map(({ pass_enc, active, role, ...r }) => ({
+    ...r,
+    active: !!active,
+    manager: role === "manager",
+    tech: role === "manager" || isTechLogin(r.login),
+    password: pass_enc ? decryptSecret(pass_enc) : null,
+  }));
+}
+
+/** The owner makes a clinic account its manager or an ordinary administrator again. */
+export function setRole(userId: number, role: "manager" | "trainee") {
+  const r = db().prepare("UPDATE users SET role = ? WHERE id = ? AND role IN ('trainee', 'manager')").run(role, userId);
+  if (r.changes === 0) throw new Error("Пользователь не найден");
 }

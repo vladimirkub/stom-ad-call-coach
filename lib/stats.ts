@@ -109,8 +109,8 @@ export function userStats(userId: number) {
     .get(userId) as { id: number; firstName: string; lastName: string; login: string; active: number; clinicId: number; clinicName: string } | undefined;
   if (!user) return null;
   const trainings = db()
-    .prepare("SELECT id, scenario_id AS scenarioId, mode, started_at AS startedAt, duration_s AS duration, ended_by AS endedBy, total, booked FROM trainings WHERE user_id = ? ORDER BY started_at DESC LIMIT 200")
-    .all(userId) as { id: string; scenarioId: string; mode: string; startedAt: number; duration: number; endedBy: string | null; total: number; booked: number }[];
+    .prepare("SELECT id, scenario_id AS scenarioId, mode, direction, started_at AS startedAt, duration_s AS duration, ended_by AS endedBy, total, booked FROM trainings WHERE user_id = ? ORDER BY started_at DESC LIMIT 200")
+    .all(userId) as { id: string; scenarioId: string; mode: string; direction: string; startedAt: number; duration: number; endedBy: string | null; total: number; booked: number }[];
   const avg = trainings.length ? Math.round(trainings.reduce((s, t) => s + t.total, 0) / trainings.length) : null;
   const evaluations = db().prepare("SELECT evaluation FROM trainings WHERE user_id = ?").all(userId) as { evaluation: string }[];
   return {
@@ -128,7 +128,7 @@ export function trainingDetail(id: string) {
   const t = db()
     .prepare(
       `SELECT t.id, t.scenario_id AS scenarioId, t.mode, t.started_at AS startedAt, t.duration_s AS duration, t.ended_by AS endedBy,
-         t.transcript, t.live_checklist AS live, t.evaluation, u.first_name AS firstName, u.last_name AS lastName, u.id AS userId
+         t.transcript, t.live_checklist AS live, t.evaluation, t.direction, u.first_name AS firstName, u.last_name AS lastName, u.id AS userId, u.clinic_id AS clinicId
        FROM trainings t JOIN users u ON u.id = t.user_id WHERE t.id = ?`,
     )
     .get(id) as Record<string, string | number | null> | undefined;
@@ -138,6 +138,8 @@ export function trainingDetail(id: string) {
     patient: scenarioName(String(t.scenarioId)),
     trainee: `${t.firstName} ${t.lastName}`,
     userId: Number(t.userId),
+    clinicId: t.clinicId == null ? null : Number(t.clinicId),
+    direction: String(t.direction ?? "outbound"),
     mode: String(t.mode),
     startedAt: Number(t.startedAt),
     duration: Number(t.duration),

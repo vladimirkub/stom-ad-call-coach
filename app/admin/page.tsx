@@ -8,7 +8,7 @@ import { LegendEditor } from "./legend";
 import { UsagePanel } from "./usage";
 
 type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null };
-type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean; tech: boolean };
+type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean; manager: boolean; tech: boolean };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" }, cache: "no-store" });
@@ -242,7 +242,7 @@ function ClinicUsers({ clinic, onChanged, onStats }: { clinic: Clinic; onChanged
     }
   }
 
-  async function act(u: Trainee, action: "reset" | "disable" | "enable") {
+  async function act(u: Trainee, action: "reset" | "disable" | "enable" | "manager" | "trainee") {
     setError("");
     try {
       const r = await api<{ password?: string }>(`/api/admin/users/${u.id}`, { method: "POST", body: JSON.stringify({ action }) });
@@ -311,7 +311,11 @@ function ClinicUsers({ clinic, onChanged, onStats }: { clinic: Clinic; onChanged
                   <tr key={u.id} className={`border-t border-white/[0.06] ${u.active ? "" : "text-slate-500"}`}>
                     <td className="px-5 py-3">
                       {u.lastName} {u.firstName}
-                      {u.tech && <span className="chip ml-2" title="Учётка для руководителей: в статистику и отчёты не входит, расход считается">техническая</span>}
+                      {u.manager ? (
+                        <span className="chip ml-2 bg-accent/15 text-accent" title="Руководитель клиники: тренируется вне статистики команды и видит кабинет клиники">руководитель</span>
+                      ) : (
+                        u.tech && <span className="chip ml-2" title="Учётка для руководителей: в статистику и отчёты не входит, расход считается">техническая</span>
+                      )}
                       {!u.active && <span className="chip ml-2">отключён</span>}
                     </td>
                     <td className="px-3 py-3 font-mono text-[13px]">{u.login}</td>
@@ -321,6 +325,14 @@ function ClinicUsers({ clinic, onChanged, onStats }: { clinic: Clinic; onChanged
                         <CopyButton text={accessText(u)} label="Скопировать" />
                         <button type="button" className="rounded-full px-3 py-1 text-xs text-slate-300 ring-1 ring-inset ring-white/10 transition hover:bg-white/[0.06]" onClick={() => act(u, "reset")}>
                           Новый пароль
+                        </button>
+                        <button
+                          type="button"
+                          title={u.manager ? "Снова обычный администратор: попадает в статистику" : "Открыть кабинет клиники; тренировки уйдут из статистики команды"}
+                          className="rounded-full px-3 py-1 text-xs text-slate-300 ring-1 ring-inset ring-white/10 transition hover:bg-white/[0.06]"
+                          onClick={() => act(u, u.manager ? "trainee" : "manager")}
+                        >
+                          {u.manager ? "Снять руководителя" : "Сделать руководителем"}
                         </button>
                         <button
                           type="button"

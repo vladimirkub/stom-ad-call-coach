@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { resetPassword, setActive } from "@/lib/auth";
+import { resetPassword, setActive, setRole } from "@/lib/auth";
 import { requireOwner } from "@/lib/session";
 
-// { action: "reset" } issues a new password; "disable" / "enable" closes or reopens access (and ends open sessions).
+// { action: "reset" } issues a new password; "disable" / "enable" closes or reopens access (and ends open sessions);
+// "manager" / "trainee" makes the account the clinic's manager or an ordinary administrator.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const gate = await requireOwner();
   if ("denied" in gate) return gate.denied;
@@ -12,6 +13,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (action === "reset") return NextResponse.json({ password: resetPassword(id) });
     if (action === "disable" || action === "enable") {
       setActive(id, action === "enable");
+      return NextResponse.json({ ok: true });
+    }
+    if (action === "manager" || action === "trainee") {
+      setRole(id, action);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: "Неизвестное действие" }, { status: 400 });

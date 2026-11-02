@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { SKILLS } from "@/lib/scoring";
 import { TEMPO } from "@/lib/tempo";
 import { Panel, PanelTitle } from "../ui";
 
-// Owner statistics: overview -> clinic -> trainee -> one call. Each level loads from /api/admin/stats.
+// Statistics: overview -> clinic -> trainee -> one call. The owner's admin loads from /api/admin; the clinic manager's
+// cabinet uses the same views from /api/clinic, starting at their clinic (no overview of all clinics).
+
+/** Where the views load from, and whether there is an overview above the clinic. */
+const Scope = createContext<{ api: string; overview: boolean }>({ api: "/api/admin", overview: true });
+export function StatsScope({ api, overview, children }: { api: string; overview: boolean; children: React.ReactNode }) {
+  return <Scope.Provider value={{ api, overview }}>{children}</Scope.Provider>;
+}
 
 export type StatsView = { view: "overview" } | { view: "clinic"; id: number } | { view: "user"; id: number } | { view: "training"; id: string };
 
@@ -27,22 +34,23 @@ type UserStats = {
   average: number | null;
   booked: number;
   skills: Skills;
-  trainings: { id: string; patient: string; mode: string; startedAt: number; duration: number; endedBy: string | null; total: number; booked: boolean }[];
+  trainings: { id: string; patient: string; mode: string; direction: string; startedAt: number; duration: number; endedBy: string | null; total: number; booked: boolean }[];
 };
 type Training = {
-  id: string; patient: string; trainee: string; userId: number; mode: string; startedAt: number; duration: number; endedBy: string | null;
+  id: string; patient: string; trainee: string; userId: number; mode: string; direction: string; startedAt: number; duration: number; endedBy: string | null;
   transcript: { role: "user" | "agent"; text: string }[];
   live: string[];
   evaluation: { total: number; summary: string; appointmentBooked: boolean; checklist: { id: string; label: string; done: boolean; evidence?: string }[]; improvements?: string[]; strengths?: string[] };
 };
 
 function useStats<T>(query: string) {
+  const { api } = useContext(Scope);
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     let live = true;
     setData(null);
-    fetch(`/api/admin/stats?${query}`, { cache: "no-store" })
+    fetch(`${api}/stats?${query}`, { cache: "no-store" })
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(body.error || `Ошибка ${r.status}`);
@@ -52,7 +60,7 @@ function useStats<T>(query: string) {
     return () => {
       live = false;
     };
-  }, [query]);
+  }, [api, query]);
   return { data, error };
 }
 
@@ -62,6 +70,7 @@ const ago = (ms: number | null) => {
   const days = Math.floor((Date.now() - ms) / 864e5);
   return days === 0 ? "сегодня" : days === 1 ? "вчера" : `${days} дн. назад`;
 };
+const callKind = (mode: string, direction?: string) => `${mode === "voice" ? "голос" : "текст"}${direction === "inbound" ? " · входящий" : ""}`;
 const minutes = (s: number) => (s < 60 ? `${s} с` : `${Math.round(s / 60)} мин`);
 const scoreTone = (v: number | null) => (v == null ? "text-slate-500" : v >= 70 ? "text-accent" : v >= 40 ? "text-amber-200" : "text-rose-300");
 
@@ -71,8 +80,9 @@ function Loading({ error }: { error: string }) {
 
 /** Downloads the PDF report; a plain link, so the browser saves the file under the name the server gives it. */
 function PdfButton({ type, id }: { type: "clinic" | "user"; id: number }) {
+  const { api } = useContext(Scope);
   return (
-    <a href={`/api/admin/report?type=${type}&id=${id}`} download className="btn btn-ghost shrink-0 px-4 py-2 text-xs">
+    <a href={`${api}/report?type=${type}&id=${id}`} download className="btn btn-ghost shrink-0 px-4 py-2 text-xs">
       Скачать PDF
     </a>
   );
@@ -209,13 +219,14 @@ function OverviewView({ go }: { go: (v: StatsView) => void }) {
 }
 
 function ClinicView({ id, go }: { id: number; go: (v: StatsView) => void }) {
+  const { overview } = useContext(Scope);
   const { data, error } = useStats<ClinicStats>(`view=clinic&id=${id}`);
-  if (!data) return <><Back onClick={() => go({ view: "overview" })}>Сводка</Back><Loading error={error} /></>;
+  if (!data) return <>{overview && <Back onClick={() => go({ view: "overview" })}>Сводка</Back>}<Loading error={error} /></>;
   const { clinic, users, skills, misses, calls30 } = data;
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Back onClick={() => go({ view: "overview" })}>Сводка</Back>
+        {overview && <Back onClick={() => go({ view: "overview" })}>Сводка</Back>}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow">{clinic.city}</p>
@@ -360,7 +371,7 @@ function UserView({ id, go }: { id: number; go: (v: StatsView) => void }) {
                       </button>
                     </td>
                     <td className="px-3 py-3">{t.patient}</td>
-                    <td className="px-3 py-3 text-slate-400">{t.mode === "voice" ? "голос" : "текст"}</td>
+                    <td className="px-3 py-3 text-slate-400">{callKind(t.mode, t.direction)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-slate-400">{minutes(t.duration)}</td>
                     <td className={`px-3 py-3 text-right tabular-nums ${scoreTone(t.total)}`}>{t.total}</td>
                     <td className="px-5 py-3">{t.booked ? <span className="text-accent">записан</span> : <span className="text-slate-500">нет</span>}</td>
@@ -385,7 +396,7 @@ function TrainingView({ id, go }: { id: string; go: (v: StatsView) => void }) {
     <div className="flex flex-col gap-5">
       <div>
         <Back onClick={() => go({ view: "user", id: data.userId })}>{data.trainee}</Back>
-        <p className="eyebrow">{dateTime(data.startedAt)} · {data.mode === "voice" ? "голос" : "текст"} · {minutes(data.duration)}{data.endedBy === "patient" ? " · пациент положил трубку" : ""}</p>
+        <p className="eyebrow">{dateTime(data.startedAt)} · {callKind(data.mode, data.direction)} · {minutes(data.duration)}{data.endedBy === "patient" ? " · пациент положил трубку" : ""}</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{data.trainee} → {data.patient}</h2>
       </div>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">

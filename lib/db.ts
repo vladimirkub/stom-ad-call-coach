@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS clinics (
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY,
   clinic_id INTEGER REFERENCES clinics(id),
-  role TEXT NOT NULL CHECK (role IN ('owner', 'trainee')),
+  role TEXT NOT NULL CHECK (role IN ('owner', 'manager', 'trainee')),
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   login TEXT NOT NULL UNIQUE,
@@ -99,6 +99,25 @@ export function db(): DatabaseSync {
     if (!clinicCols.some((c) => c.name === "sites")) conn.exec("ALTER TABLE clinics ADD COLUMN sites TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
     if (!clinicCols.some((c) => c.name === "directions")) conn.exec("ALTER TABLE clinics ADD COLUMN directions TEXT NOT NULL DEFAULT '[]'");
+    // The clinic manager role (Nov 2026): SQLite cannot widen a CHECK, so an older users table is rebuilt once, and each
+    // clinic's shared "admin.<clinic>" account, which managers already use, becomes the manager.
+    const usersSql = (conn.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get() as { sql: string }).sql;
+    if (!usersSql.includes("'manager'")) {
+      conn.exec("PRAGMA foreign_keys = OFF");
+      conn.exec("BEGIN");
+      try {
+        conn.exec(usersSql.replace("CREATE TABLE users", "CREATE TABLE users_new").replace("IN ('owner', 'trainee')", "IN ('owner', 'manager', 'trainee')"));
+        conn.exec("INSERT INTO users_new SELECT * FROM users; DROP TABLE users; ALTER TABLE users_new RENAME TO users;");
+        conn.exec("CREATE INDEX IF NOT EXISTS users_clinic ON users(clinic_id)");
+        conn.exec("UPDATE users SET role = 'manager' WHERE role = 'trainee' AND (login GLOB 'admin.*' OR login GLOB 'admin[0-9]*.*')");
+        conn.exec("COMMIT");
+      } catch (e) {
+        conn.exec("ROLLBACK");
+        throw e;
+      } finally {
+        conn.exec("PRAGMA foreign_keys = ON");
+      }
+    }
     const trainingCols = conn.prepare("PRAGMA table_info(trainings)").all() as { name: string }[];
     if (!trainingCols.some((c) => c.name === "direction")) conn.exec("ALTER TABLE trainings ADD COLUMN direction TEXT NOT NULL DEFAULT 'outbound'");
     const legendCols = conn.prepare("PRAGMA table_info(legends)").all() as { name: string }[];

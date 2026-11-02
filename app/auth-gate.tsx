@@ -144,7 +144,7 @@ function LoginWindow() {
   );
 }
 
-/** Name, admin link for the owner, and sign-out; sits next to the brand pill. */
+/** Name, the admin link for the owner or the cabinet link for a clinic manager, and sign-out; next to the brand pill. */
 export function AccountChip() {
   const state = useAuth();
   if (state.status !== "user") return null;
@@ -161,6 +161,11 @@ export function AccountChip() {
       {user.role === "owner" && (
         <Link href="/admin" className="rounded-full px-3 py-1 font-medium text-accent transition hover:bg-white/[0.06]">
           Админка
+        </Link>
+      )}
+      {user.role === "manager" && (
+        <Link href="/clinic" className="rounded-full px-3 py-1 font-medium text-accent transition hover:bg-white/[0.06]">
+          Кабинет
         </Link>
       )}
       <button type="button" onClick={logout} className="rounded-full px-3 py-1 text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-100">

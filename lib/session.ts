@@ -21,6 +21,14 @@ export async function requireOwner(): Promise<{ owner: SessionUser } | { denied:
   return { owner: user };
 }
 
+/** For the clinic cabinet: the signed-in clinic manager (with their clinic), or a ready 401/403 response. */
+export async function requireManager(): Promise<{ manager: SessionUser & { clinic: NonNullable<SessionUser["clinic"]> } } | { denied: NextResponse }> {
+  const user = await currentUser();
+  if (!user) return { denied: NextResponse.json({ error: "Войдите в систему" }, { status: 401 }) };
+  if (user.role !== "manager" || !user.clinic) return { denied: NextResponse.json({ error: "Нет доступа" }, { status: 403 }) };
+  return { manager: { ...user, clinic: user.clinic } };
+}
+
 export async function setSessionCookie(token: string) {
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
