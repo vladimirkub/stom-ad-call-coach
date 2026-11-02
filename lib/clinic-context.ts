@@ -8,6 +8,7 @@ import priv from "./scenarios-private.json" with { type: "json" };
 import clinic from "./clinic.json" with { type: "json" };
 import { db } from "./db.ts";
 import { SECTIONS, type Fact } from "./legend.ts";
+import { factsForDirection } from "./directions.ts";
 
 export type PersonaFit = { lead: string; situation: string; concerns: string; hiddenObjection: string; showUpRisk: string; direction?: string };
 export type ClinicContext = {
@@ -15,6 +16,8 @@ export type ClinicContext = {
   legendVersion: number | null;
   memo: string[];
   siteFacts: string;
+  /** The approved legend's facts (null for the demo clinic): each patient reads only those of their direction. */
+  facts: Fact[] | null;
   personas: Record<string, PersonaFit>;
   /** Patients fitted to this clinic's legend; the rest are the demo clinic's until their fit is ready. */
   fittedIds: string[];
@@ -57,7 +60,7 @@ export function siteFactsFromFacts(facts: Fact[]): string {
   ].join("\n");
 }
 
-const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, personas: defaultPersonas(), fittedIds: [] };
+const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, facts: null, personas: defaultPersonas(), fittedIds: [] };
 
 /** The context for a clinic (null: the shared demo). Each patient fitted to this legend version replaces the demo one. */
 export function clinicContext(clinicId: number | null | undefined): ClinicContext {
@@ -73,6 +76,7 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
     legendVersion: row.version,
     memo: memoFromFacts(facts),
     siteFacts: siteFactsFromFacts(facts),
+    facts,
     personas: { ...DEFAULT.personas, ...fitted },
     fittedIds: Object.keys(fitted),
   };
@@ -81,5 +85,6 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
 /** The dynamic variables of a voice patient: the same clinic-specific text the text mode gets. */
 export function personaVars(ctx: ClinicContext, scenarioId: string, direction: CallDirection = "outbound") {
   const p = ctx.personas[scenarioId];
-  return { situation: p.situation, concerns: p.concerns, site_facts: ctx.siteFacts, call_direction: direction === "inbound" ? INBOUND_RULE : OUTBOUND_RULE };
+  const siteFacts = ctx.facts && p.direction ? siteFactsFromFacts(factsForDirection(ctx.facts, p.direction)) : ctx.siteFacts;
+  return { situation: p.situation, concerns: p.concerns, site_facts: siteFacts, call_direction: direction === "inbound" ? INBOUND_RULE : OUTBOUND_RULE };
 }

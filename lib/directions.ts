@@ -9,7 +9,7 @@ export const DIRECTIONS = [
   { key: "full_arch", label: "Тотальная реабилитация", hint: "все зубы, All-on-4/6, «зубы за 1 день»", match: /all[- ]?on|все зубы|за 1 день|за один день|тотальн|полн\w* (челюст|протез|восстановл)/i },
   { key: "ortho", label: "Ортодонтия", hint: "брекеты, элайнеры, исправление прикуса", match: /брекет|элайнер|ортодонт|прикус|капп/i },
   { key: "prosthetics", label: "Протезирование", hint: "коронки, виниры, мосты, съёмные протезы", match: /коронк|винир|протез|мост/i },
-  { key: "therapy", label: "Лечение зубов", hint: "кариес, пульпит, пломбы, гигиена", match: /кариес|пульпит|пломб|гигиен|лечени\w* (зуб|канал)/i },
+  { key: "therapy", label: "Лечение и удаление зубов", hint: "кариес, пульпит, пломбы, удаление, гигиена", match: /кариес|пульпит|пломб|гигиен|лечени\w* (зуб|канал)|удален|удалить/i },
   { key: "kids", label: "Детская стоматология", hint: "лечение зубов у детей", match: /детск|молочн|ребён|ребен/i },
 ] as const;
 export type DirectionKey = (typeof DIRECTIONS)[number]["key"];
@@ -85,4 +85,27 @@ export function setDirections(clinicId: number, raw: unknown): DirectionKey[] {
   const r = db().prepare("UPDATE clinics SET directions = ? WHERE id = ?").run(JSON.stringify(keys), clinicId);
   if (!r.changes) throw new Error("Клиника не найдена");
   return keys;
+}
+
+/** Directions so close that a patient of one also reads the other's facts: implants, single or full-arch. */
+const SIBLINGS: Partial<Record<DirectionKey, DirectionKey[]>> = { single_implant: ["full_arch"], full_arch: ["single_implant"] };
+/**
+ * Areas for telling a general fact from a specific one: implants go with prosthetics on them, children's treatment with
+ * treatment ("кариес молочных зубов" is one topic, not two).
+ */
+const AREA: Record<DirectionKey, string> = { single_implant: "implants", full_arch: "implants", prosthetics: "implants", ortho: "ortho", therapy: "therapy", kids: "therapy" };
+
+/**
+ * The facts a patient of this direction has read: those about their own direction (and its sibling) plus the general
+ * ones: matching no direction (address, hours, guarantees) or several areas at once (an offer for "гигиена, лечение и
+ * имплантация", the list of the clinic's services, a surgeon who extracts and implants). Facts about other services
+ * stay out, so the patient does not drift into them. No direction: all facts.
+ */
+export function factsForDirection(facts: Fact[], key?: string): Fact[] {
+  const own = DIRECTIONS.filter((d) => d.key === key || SIBLINGS[key as DirectionKey]?.includes(d.key));
+  if (own.length === 0) return facts;
+  return facts.filter((f) => {
+    const areas = new Set(DIRECTIONS.filter((d) => d.match.test(f.text)).map((d) => AREA[d.key]));
+    return areas.size !== 1 || own.some((d) => d.match.test(f.text));
+  });
 }

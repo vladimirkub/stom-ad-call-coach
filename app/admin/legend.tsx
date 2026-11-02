@@ -195,6 +195,63 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
       </Panel>
 
       <Panel>
+        <PanelTitle>Направления клиники</PanelTitle>
+        <p className="mt-1 mb-4 text-xs text-pretty text-slate-500">
+          По каким направлениям клиника работает с пациентами из рекламы. Десять пациентов распределятся между ними по возрасту и характеру, и на каждое
+          направление придёт хотя бы один. Каждый пациент знает с сайта только факты своего направления и общие (адрес, часы, акции на всё), поэтому не
+          заводит разговор о чужих услугах. Без отметок пациенты остаются со своими исходными историями.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {state.directions.options.map((o) => {
+            const on = directions.includes(o.key);
+            const hinted = state.directions.suggested.includes(o.key);
+            return (
+              <label key={o.key} className={`flex cursor-pointer gap-3 rounded-xl p-3 ring-1 ring-inset transition ${on ? "bg-accent/10 ring-accent/40" : "bg-ink-950/50 ring-white/[0.06] hover:ring-white/15"}`}>
+                <input
+                  id={`dir-${o.key}`}
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+                  checked={on}
+                  onChange={(e) => setDirections(e.target.checked ? [...directions, o.key] : directions.filter((d) => d !== o.key))}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm text-slate-100">
+                    {o.label}
+                    {hinted && <span className="chip ml-2 bg-accent/15 text-accent">есть в легенде</span>}
+                  </span>
+                  <span className="block text-xs text-slate-500">{o.hint}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button type="button" className="btn btn-primary px-4 py-2 text-xs" disabled={!!busy || !directionsChanged} onClick={() => run("directions", { action: "directions", directions }, approved ? "Направления сохранены, пациенты пересобираются" : "Направления сохранены")}>
+            Сохранить направления
+          </button>
+          {state.directions.suggested.length > 0 && state.directions.suggested.join() !== directions.join() && (
+            <button type="button" className="btn btn-ghost px-4 py-2 text-xs" onClick={() => setDirections(state.directions.suggested)}>
+              Отметить по легенде
+            </button>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-pretty text-slate-500">
+          {approved
+            ? "Легенду обновлять не нужно: после сохранения пациенты пересоберутся сами. «Обновить легенду» нужна, только когда изменились сайт или офферы."
+            : "Направления применятся, когда легенда будет утверждена."}
+        </p>
+        {state.directions.selected.length > 0 && (
+          <p className="mt-3 text-xs text-pretty text-slate-400">
+            Кто за чем придёт:{" "}
+            {Object.entries(state.directions.plan)
+              .map(([id, d]) => `${patientName(id)} — ${directionLabel(d)?.toLowerCase()}`)
+              .join(", ")}
+            .
+          </p>
+        )}
+      </Panel>
+
+      <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-pretty text-slate-400">
             {hasSources
@@ -361,56 +418,6 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
         </Panel>
       )}
 
-      <Panel>
-        <PanelTitle>Направления клиники</PanelTitle>
-        <p className="mt-1 mb-4 text-xs text-pretty text-slate-500">
-          По каким направлениям клиника работает с пациентами из рекламы. Шесть пациентов распределятся между ними по возрасту и характеру, и на каждое
-          направление придёт хотя бы один. Без отметок пациенты остаются со своими исходными историями.
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {state.directions.options.map((o) => {
-            const on = directions.includes(o.key);
-            const hinted = state.directions.suggested.includes(o.key);
-            return (
-              <label key={o.key} className={`flex cursor-pointer gap-3 rounded-xl p-3 ring-1 ring-inset transition ${on ? "bg-accent/10 ring-accent/40" : "bg-ink-950/50 ring-white/[0.06] hover:ring-white/15"}`}>
-                <input
-                  id={`dir-${o.key}`}
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
-                  checked={on}
-                  onChange={(e) => setDirections(e.target.checked ? [...directions, o.key] : directions.filter((d) => d !== o.key))}
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm text-slate-100">
-                    {o.label}
-                    {hinted && <span className="chip ml-2 bg-accent/15 text-accent">есть в легенде</span>}
-                  </span>
-                  <span className="block text-xs text-slate-500">{o.hint}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button type="button" className="btn btn-primary px-4 py-2 text-xs" disabled={!!busy || !directionsChanged} onClick={() => run("directions", { action: "directions", directions }, approved ? "Направления сохранены, пациенты пересобираются" : "Направления сохранены")}>
-            Сохранить направления
-          </button>
-          {state.directions.suggested.length > 0 && state.directions.suggested.join() !== directions.join() && (
-            <button type="button" className="btn btn-ghost px-4 py-2 text-xs" onClick={() => setDirections(state.directions.suggested)}>
-              Отметить по легенде
-            </button>
-          )}
-        </div>
-        {state.directions.selected.length > 0 && (
-          <p className="mt-3 text-xs text-pretty text-slate-400">
-            Кто за чем придёт:{" "}
-            {Object.entries(state.directions.plan)
-              .map(([id, d]) => `${patientName(id)} — ${directionLabel(d)?.toLowerCase()}`)
-              .join(", ")}
-            .
-          </p>
-        )}
-      </Panel>
 
       {approved && state.patients && (
         <Panel>

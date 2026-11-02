@@ -8,7 +8,7 @@ import { db } from "./db.ts";
 import { gemmaJson } from "./gemma.ts";
 import { siteFactsFromFacts, type PersonaFit } from "./clinic-context.ts";
 import type { Fact } from "./legend.ts";
-import { DIRECTIONS, assignDirections, getDirections, type DirectionKey } from "./directions.ts";
+import { DIRECTIONS, assignDirections, factsForDirection, getDirections, type DirectionKey } from "./directions.ts";
 
 const FitSchema = z.object({
   lead: z.string().min(10).max(400),
@@ -70,7 +70,7 @@ ${p.concerns}
 РАССРОЧКА: ${INSTALLMENT_ASKERS.has(id) ? "деньги для этого пациента — реальная трудность, он может спросить о рассрочке или кредите." : "этот пациент НЕ спрашивает о рассрочке и кредите и не жалуется, что ему тяжело заплатить."}
 
 ФАКТЫ НОВОЙ КЛИНИКИ
-${siteFactsFromFacts(facts)}${direction ? directionTask(direction) : ""}`;
+${siteFactsFromFacts(direction ? factsForDirection(facts, direction) : facts)}${direction ? directionTask(direction) : ""}`;
   const fit = await gemmaJson({ system: SYSTEM, prompt, schema: FitSchema, tier: "smart", thinking: "default", maxOutputTokens: 8192 });
   const out = { ...fit, concerns: limitInstallments(id, fit.concerns) };
   return direction ? { ...out, direction } : out;

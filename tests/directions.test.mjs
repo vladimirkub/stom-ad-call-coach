@@ -78,3 +78,21 @@ test("every patient in the scenarios has direction preferences and a full person
     for (const v of ["{{situation}}", "{{concerns}}", "{{site_facts}}", "{{BEHAVIOR}}"]) assert.ok(priv[id].prompt.includes(v), `${id}: ${v}`);
   }
 });
+
+test("a patient reads only the facts of their direction (implants together) and the general ones", async () => {
+  const { factsForDirection } = await import("../lib/directions.ts");
+  const f = (text, section = "prices") => ({ section, text, source: null });
+  const facts = [
+    f("Имплант Osstem под ключ 24 990 ₽"),
+    f("All-on-4 от 200 000 ₽"),
+    f("Брекеты Biomim 39 000 ₽"),
+    f("Лечение кариеса молочных зубов 8 000 ₽"),
+    f("Консультация бесплатно", "offers"),
+    f("Ломоносовский проспект 29к2", "contacts"),
+  ];
+  const texts = (key) => factsForDirection(facts, key).map((x) => x.text.split(" ")[0]);
+  assert.deepEqual(texts("ortho"), ["Брекеты", "Консультация", "Ломоносовский"]);
+  assert.deepEqual(texts("full_arch"), ["Имплант", "All-on-4", "Консультация", "Ломоносовский"]);
+  assert.deepEqual(texts("kids"), ["Лечение", "Консультация", "Ломоносовский"]);
+  assert.equal(factsForDirection(facts, undefined).length, facts.length);
+});
