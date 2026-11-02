@@ -91,8 +91,6 @@ function Call({ id }: { id: string }) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
       await startSessionFast(conversation, body);
-      // Before the administrator's first word: the patient is the caller, not the clinic (lib/direction.ts).
-      if (dir === "inbound") conversation.sendContextualUpdate(INBOUND_START_NOTE);
       beginAttempt();
       setMode("voice");
     } catch (e) {
@@ -206,7 +204,30 @@ function Call({ id }: { id: string }) {
   const notesSent = useRef(new Set<string>());
   const sendNoteRef = useRef(conversation.sendContextualUpdate);
   sendNoteRef.current = conversation.sendContextualUpdate;
+  // A hidden note never breaks the call: the SDK throws while the session is still being created or already gone.
+  const sendNote = (text: string) => {
+    try {
+      sendNoteRef.current(text);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   const voiceLive = mode === "voice" && conversation.status === "connected";
+  // Inbound: as soon as the line is up and before the administrator's first word, the patient learns it is the caller
+  // (lib/direction.ts). startSession does not wait for the connection, so this waits for the "connected" status.
+  useEffect(() => {
+    if (!voiceLive || !inbound || notesSent.current.has("start")) return;
+    notesSent.current.add("start");
+    if (sendNote(INBOUND_START_NOTE)) return;
+    // The session object can lag the status for a moment: retry for up to 3 s.
+    let tries = 0;
+    const retry = setInterval(() => {
+      if (sendNote(INBOUND_START_NOTE) || ++tries >= 15) clearInterval(retry);
+    }, 200);
+    return () => clearInterval(retry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceLive, inbound]);
   useEffect(() => {
     if (!voiceLive) return;
     const tick = setInterval(() => {
@@ -216,7 +237,7 @@ function Call({ id }: { id: string }) {
       for (const n of TEMPO_NOTES) {
         if (elapsed >= n.voiceSeconds && !notesSent.current.has(n.stage)) {
           notesSent.current.add(n.stage);
-          sendNoteRef.current(TEMPO_NOTE_TEXT[n.stage]);
+          sendNote(TEMPO_NOTE_TEXT[n.stage]);
         }
       }
     }, 1000);
