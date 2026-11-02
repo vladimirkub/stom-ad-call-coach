@@ -24,3 +24,11 @@ test("patients hint at the hidden reason early and ask about installments only w
   assert.match(PATIENT_BEHAVIOR, /Сначала намёк: уже во второй-третьей/);
   assert.match(PATIENT_BEHAVIOR, /Про рассрочку и кредит спрашивай, только если деньги для тебя правда проблема/);
 });
+
+test("the clinic's wishes reach the judge only when there are some", () => {
+  const transcript = [{ role: "user", text: "Добрый день" }];
+  assert.match(evaluationSystem(false, "outbound", true), /ПОЖЕЛАНИЯ КЛИНИКИ[\s\S]*"wishes":\[/);
+  assert.doesNotMatch(evaluationSystem(false), /ПОЖЕЛАНИЯ КЛИНИКИ|"wishes"/);
+  assert.match(evaluationPrompt({ scenario: null, memo: [], transcript, wishes: "Проверить наркоз" }), /Пожелания клиники к тренировке[\s\S]*Проверить наркоз/);
+  assert.doesNotMatch(evaluationPrompt({ scenario: null, memo: [], transcript }), /Пожелания/);
+});

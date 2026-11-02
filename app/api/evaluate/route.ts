@@ -27,10 +27,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Нужно хотя бы две реплики оператора, чтобы оценить звонок." }, { status: 422 });
   }
 
-  const prompt = evaluationPrompt({ scenario, memo: ctx.memo, transcript });
+  // Real calls are judged on the checklist alone; the clinic's wishes are for its trainings.
+  const wishes = real ? "" : ctx.wishes;
+  const prompt = evaluationPrompt({ scenario, memo: ctx.memo, transcript, wishes });
 
   try {
-    const ev = await gemmaJson({ system: evaluationSystem(real, direction), prompt, schema: EvaluationSchema, tier: "smart" });
+    const ev = await gemmaJson({ system: evaluationSystem(real, direction, !!wishes.trim()), prompt, schema: EvaluationSchema, tier: "smart" });
 
     const passed = new Set(ev.passed);
     const notes = new Map(ev.missed.map((m) => [m.id, m.note]));

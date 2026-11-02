@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import scenarios from "@/lib/scenarios-public.json";
 import { Panel, PanelTitle } from "../ui";
+import { ChangeSummary } from "../clinic/settings";
 
 // The owner's editor for one clinic's legend: its websites, the analysis that drafts facts from them, the draft
 // itself (edit, delete, add) and approval. Trainings use only the approved version.
@@ -16,12 +17,17 @@ type State = {
   offersSource: string;
   sites: { url: string; label: string }[];
   offers: string;
+  wishes: string;
   approved: Legend | null;
   working: Legend | null;
   history: { id: number; version: number; approvedAt: number; facts: number; status: string }[];
   changes: { added: string[]; removed: Fact[] } | null;
   patients: { status: "pending" | "ready" | "failed" | null; error: string | null; personas: Record<string, Fit> } | null;
   directions: { options: { key: string; label: string; hint: string }[]; selected: string[]; suggested: string[]; plan: Record<string, string> };
+  proposal: {
+    author: string; updatedAt: number; comment: string;
+    changes: { directionsAdded: string[]; directionsRemoved: string[]; facts: { added: string[]; removed: Fact[] }; wishes: { before: string; after: string } | null; stale: boolean };
+  } | null;
 };
 type Fit = { lead: string; situation: string; concerns: string; direction?: string };
 
@@ -54,17 +60,20 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
   const [state, setState] = useState<State | null>(null);
   const [sites, setSites] = useState<{ url: string; label: string }[]>([]);
   const [offers, setOffers] = useState("");
+  const [wishes, setWishes] = useState("");
   const [directions, setDirections] = useState<string[]>([]);
   const [facts, setFacts] = useState<Fact[]>([]);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
+  const [answer, setAnswer] = useState("");
 
   const apply = useCallback((s: State, keepEdits = false) => {
     setState(s);
     setSites(s.sites.length ? s.sites : [{ url: "", label: "Официальный сайт" }]);
     setOffers(s.offers);
+    setWishes(s.wishes);
     setDirections(s.directions.selected);
     if (!keepEdits) {
       setFacts(s.working?.status === "draft" ? s.working.facts : []);
@@ -135,6 +144,43 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
+      {state.proposal && (
+        <Panel tone="accent">
+          <PanelTitle>Предложение руководителя клиники</PanelTitle>
+          <p className="mt-1 text-sm text-pretty text-slate-400">
+            {state.proposal.author} · {date(state.proposal.updatedAt)}. Пока вы не утвердите, тренировки идут по текущей легенде.
+          </p>
+          {state.proposal.comment && <p className="mt-2 text-sm text-pretty text-slate-200">«{state.proposal.comment}»</p>}
+          <ChangeSummary changes={state.proposal.changes} />
+          {state.proposal.changes.stale && (
+            <p className="alert alert-warn mt-3">
+              После того как руководитель начал правку, вы утвердили новую версию легенды. Утверждение предложения заменит факты его копией: проверьте, что ваши правки не потеряются.
+            </p>
+          )}
+          <label className="mt-4 flex flex-col gap-1.5 text-xs font-medium text-slate-400">
+            Ответ руководителю, если нужно
+            <input id="proposal-answer" className="field" maxLength={1000} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Например: «Рассрочку уточните у банка-партнёра»" />
+          </label>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-primary px-4 py-2 text-xs"
+              disabled={!!busy}
+              onClick={async () => (await run("approveProposal", { action: "approveProposal", answer }, "Предложение утверждено: новая версия легенды, пациенты пересобираются")) && setAnswer("")}
+            >
+              Утвердить
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost px-4 py-2 text-xs"
+              disabled={!!busy}
+              onClick={async () => (await run("rejectProposal", { action: "rejectProposal", answer }, "Предложение отклонено")) && setAnswer("")}
+            >
+              Отклонить
+            </button>
+          </div>
+        </Panel>
+      )}
       <Panel>
         <PanelTitle>Легенда клиники</PanelTitle>
         <p className="mt-2 text-sm text-pretty text-slate-400">
@@ -249,6 +295,33 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
             .
           </p>
         )}
+      </Panel>
+
+      <Panel>
+        <PanelTitle>Пожелания к тренировке</PanelTitle>
+        <p className="mt-1 mb-3 text-xs text-pretty text-slate-500">
+          Своими словами: на чём проверить администраторов этой клиники. Пациенты сами поднимут эти темы, если они подходят их истории, а в разборе звонка появится
+          блок «По пожеланиям клиники». Это не факты о клинике: цены и акции пишите в офферы.
+        </p>
+        <textarea
+          id="legend-wishes"
+          className="field min-h-[7rem] resize-y"
+          placeholder="Например: «Хочу проверить, как администраторы отрабатывают страх наркоза у детей, рассказывают про опыт врачей с маленькими пациентами и закрывают возражение „подумаем и перезвоним“»"
+          value={wishes}
+          maxLength={4000}
+          onChange={(e) => setWishes(e.target.value)}
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-primary px-4 py-2 text-xs"
+            disabled={!!busy || wishes === state.wishes}
+            onClick={() => run("wishes", { action: "wishes", wishes }, approved ? "Пожелания сохранены, пациенты пересобираются" : "Пожелания сохранены")}
+          >
+            Сохранить пожелания
+          </button>
+          <span className="text-xs tabular-nums text-slate-600">{wishes.length.toLocaleString("ru-RU")} / 4 000</span>
+        </div>
       </Panel>
 
       <Panel>

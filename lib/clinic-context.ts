@@ -18,6 +18,8 @@ export type ClinicContext = {
   siteFacts: string;
   /** The approved legend's facts (null for the demo clinic): each patient reads only those of their direction. */
   facts: Fact[] | null;
+  /** What the clinic wants its administrators tested on, in its own words; the evaluator checks it (lib/legend.ts). */
+  wishes: string;
   personas: Record<string, PersonaFit>;
   /** Patients fitted to this clinic's legend; the rest are the demo clinic's until their fit is ready. */
   fittedIds: string[];
@@ -60,7 +62,7 @@ export function siteFactsFromFacts(facts: Fact[]): string {
   ].join("\n");
 }
 
-const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, facts: null, personas: defaultPersonas(), fittedIds: [] };
+const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, facts: null, wishes: "", personas: defaultPersonas(), fittedIds: [] };
 
 /** The context for a clinic (null: the shared demo). Each patient fitted to this legend version replaces the demo one. */
 export function clinicContext(clinicId: number | null | undefined): ClinicContext {
@@ -68,7 +70,8 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
   const row = db().prepare("SELECT version, facts, personas, personas_status FROM legends WHERE clinic_id = ? AND status = 'approved'").get(clinicId) as
     | { version: number; facts: string; personas: string; personas_status: string | null }
     | undefined;
-  if (!row) return { ...DEFAULT, clinicId };
+  const wishes = (db().prepare("SELECT wishes FROM clinics WHERE id = ?").get(clinicId) as { wishes: string } | undefined)?.wishes ?? "";
+  if (!row) return { ...DEFAULT, clinicId, wishes };
   const facts = JSON.parse(row.facts) as Fact[];
   const fitted = JSON.parse(row.personas) as Record<string, PersonaFit>;
   return {
@@ -77,6 +80,7 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
     memo: memoFromFacts(facts),
     siteFacts: siteFactsFromFacts(facts),
     facts,
+    wishes,
     personas: { ...DEFAULT.personas, ...fitted },
     fittedIds: Object.keys(fitted),
   };

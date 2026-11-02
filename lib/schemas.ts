@@ -19,6 +19,8 @@ export const EvaluationSchema = z.object({
   // A very weak call may genuinely have no strengths.
   strengths: z.array(z.string().min(1)).max(5).default([]),
   improvements: z.array(z.string().min(1)).min(1).max(5),
+  // The clinic's wishes for training (lib/legend.ts), checked one topic at a time; empty when the clinic has none.
+  wishes: z.array(z.object({ topic: z.string().min(1), done: z.boolean(), note: z.string().default("") })).max(6).default([]),
 });
 export type Evaluation = z.infer<typeof EvaluationSchema>;
 

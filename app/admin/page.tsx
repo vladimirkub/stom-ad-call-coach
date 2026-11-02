@@ -7,7 +7,7 @@ import { StatsPanel, type StatsView } from "./stats";
 import { LegendEditor } from "./legend";
 import { UsagePanel } from "./usage";
 
-type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null };
+type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null; proposal?: boolean };
 type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean; manager: boolean; tech: boolean };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -113,6 +113,7 @@ export default function Admin() {
                         <span className="block text-xs text-slate-500">
                           {c.city} · {c.slug} · {c.legendVersion ? <span className="text-accent">легенда v{c.legendVersion}</span> : "без легенды"}
                         </span>
+                        {c.proposal && <span className="chip mt-1 bg-amber-400/15 text-amber-200">предложение руководителя</span>}
                       </span>
                       <span className="shrink-0 text-xs tabular-nums text-slate-400">{c.activeUsers ?? 0}/{c.users}</span>
                     </button>
@@ -184,7 +185,7 @@ function ClinicSection({ clinic, onChanged, onStats }: { clinic: Clinic; onChang
         {(
           [
             ["users", "Администраторы"],
-            ["legend", clinic.legendVersion ? `Легенда · v${clinic.legendVersion}` : "Легенда"],
+            ["legend", `${clinic.legendVersion ? `Легенда · v${clinic.legendVersion}` : "Легенда"}${clinic.proposal ? " · предложение" : ""}`],
           ] as const
         ).map(([key, label]) => (
           <button

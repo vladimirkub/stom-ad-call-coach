@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/session";
 import {
-  OFFERS_SOURCE, SECTIONS, approveDraft, approvedLegend, compareFacts, discardDraft, expireStaleAnalyses, getOffers, getSites, legendHistory, saveDraft, setOffers,
-  setSites, startAnalysis, workingLegend,
+  OFFERS_SOURCE, SECTIONS, approveDraft, approvedLegend, compareFacts, discardDraft, expireStaleAnalyses, getOffers, getSites, getWishes, legendHistory, saveDraft, setOffers,
+  setSites, setWishes, startAnalysis, workingLegend,
 } from "@/lib/legend";
 import { ensurePersonaFit, personaFitState, startPersonaFit } from "@/lib/persona-fit";
 import { DIRECTIONS, assignDirections, getDirections, setDirections, suggestDirections } from "@/lib/directions";
+import { approveProposal, pendingProposal, proposalChanges, rejectProposal } from "@/lib/proposals";
 
 function state(clinicId: number) {
   expireStaleAnalyses();
   ensurePersonaFit(clinicId);
   const approved = approvedLegend(clinicId);
   const working = workingLegend(clinicId);
+  const proposal = pendingProposal(clinicId);
   return {
     sections: SECTIONS,
+    // The clinic manager's changes waiting for the owner (lib/proposals.ts).
+    proposal: proposal && { ...proposal, changes: proposalChanges(clinicId, proposal) },
     offersSource: OFFERS_SOURCE,
     sites: getSites(clinicId),
     offers: getOffers(clinicId),
+    wishes: getWishes(clinicId),
     approved,
     working,
     history: legendHistory(clinicId),
@@ -75,8 +80,20 @@ export async function POST(req: Request) {
         // New directions change who comes for what: refit right away if the clinic already has an approved legend.
         if (approvedLegend(clinicId)) startPersonaFit(clinicId);
         break;
+      case "wishes":
+        setWishes(clinicId, body.wishes);
+        // The patients raise the wished topics: refit them to the new wishes.
+        if (approvedLegend(clinicId)) startPersonaFit(clinicId);
+        break;
       case "discard":
         discardDraft(clinicId);
+        break;
+      case "approveProposal":
+        approveProposal(clinicId, body.answer);
+        startPersonaFit(clinicId);
+        break;
+      case "rejectProposal":
+        rejectProposal(clinicId, body.answer);
         break;
       default:
         return NextResponse.json({ error: "Неизвестное действие" }, { status: 400 });

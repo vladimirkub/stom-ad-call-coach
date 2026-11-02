@@ -7,7 +7,7 @@ import { addEntry, type HistoryEntry } from "@/lib/history";
 import type { EvaluationResult, ModelScript, Turn } from "@/lib/schemas";
 import { Panel, PanelTitle, PageHeader, Shell } from "../ui";
 import { useHome } from "../home-link";
-import { Alert, ArrowUpRight, Book, Chart, Check, Cross, Door, Keyhole, Spark, Target } from "../icons";
+import { Alert, ArrowUpRight, Book, Chart, Check, Cross, Door, Keyhole, ListCheck, Spark, Target } from "../icons";
 
 type Saved = {
   id?: string;
@@ -239,10 +239,28 @@ export default function Results() {
 
         {result.unsupportedClaims.length > 0 && (
           <div className="rise rounded-3xl bg-rose-500/[0.06] p-5 ring-1 ring-inset ring-rose-400/25" style={{ animationDelay: "180ms" }}>
-            <PanelTitle tone="bad" icon={<Alert />}>Утверждения, которых нет на сайте</PanelTitle>
+            <PanelTitle tone="bad" icon={<Alert />}>Расходится с фактами клиники</PanelTitle>
             <ul className="mt-3 space-y-1.5 text-sm text-slate-300">{result.unsupportedClaims.map((c, i) => <li key={i} className="flex gap-2.5">{bullet}{c}</li>)}</ul>
             {real && <p className="mt-3 text-xs text-slate-500">Звонок оценён по расшифровке: числа и названия могли быть распознаны неточно. Сверьте со звуком, прежде чем делать выводы по оператору.</p>}
           </div>
+        )}
+
+        {(result.wishes ?? []).length > 0 && (
+          <Panel delay={190} innerClassName="p-5 sm:p-6">
+            <PanelTitle icon={<ListCheck />}>По пожеланиям клиники</PanelTitle>
+            <p className="mt-1 text-xs text-slate-500">Темы, на которых руководитель хочет проверить администраторов. В балл из 100 не входят.</p>
+            <ul className="mt-3 space-y-2.5 text-sm">
+              {result.wishes.map((w, i) => (
+                <li key={i} className="flex gap-2.5">
+                  {w.done ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" /> : <Cross className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />}
+                  <span>
+                    <span className="font-medium text-slate-100">{w.topic}</span>
+                    {w.note && <span className="block text-slate-400">{w.note}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
         )}
 
         {result.moments.length > 0 && (

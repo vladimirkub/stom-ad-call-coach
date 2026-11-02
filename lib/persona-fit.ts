@@ -7,7 +7,7 @@ import priv from "./scenarios-private.json" with { type: "json" };
 import { db } from "./db.ts";
 import { gemmaJson } from "./gemma.ts";
 import { siteFactsFromFacts, type PersonaFit } from "./clinic-context.ts";
-import type { Fact } from "./legend.ts";
+import { getWishes, type Fact } from "./legend.ts";
 import { DIRECTIONS, assignDirections, factsForDirection, getDirections, type DirectionKey } from "./directions.ts";
 
 const FitSchema = z.object({
@@ -55,7 +55,16 @@ function directionTask(key: DirectionKey) {
 НАПРАВЛЕНИЕ ЭТОГО ПАЦИЕНТА: «${d.label}» (${d.hint}). Пациент пришёл именно по этому направлению: его проблема, увиденная реклама, заявка, вопросы и детали скрытой причины относятся к нему, даже если исходный пациент приходил за другим. Подбери проблему, правдоподобную для его возраста и жизни (например, для детской стоматологии — заявка для своего ребёнка; пожилому человеку — коронки или протез, а не виниры), а цены и акции бери из фактов этого направления. Если подходящей этому человеку услуги направления в фактах нет, оставь его проблему, и пусть он спросит о ней (в скобках отметь, что на сайте этого нет). Характер, страхи и психология скрытой причины остаются прежними.`;
 }
 
-export async function fitPersona(id: string, facts: Fact[], direction?: DirectionKey): Promise<PersonaFit> {
+/** The clinic's wishes for training: this patient raises the topics that suit them, not all of them. */
+function wishesTask(wishes: string) {
+  return `
+
+ПОЖЕЛАНИЯ КЛИНИКИ К ТРЕНИРОВКЕ (что руководитель хочет проверить у администраторов, своими словами):
+${wishes}
+Включи в concerns один-два вопроса или возражения на эти темы, если они подходят этому пациенту, его возрасту, истории и направлению: сформулируй их словами самого пациента. Темы, которые ему не подходят, пропусти. Не превращай пожелания в факты о клинике.`;
+}
+
+export async function fitPersona(id: string, facts: Fact[], direction?: DirectionKey, wishes = ""): Promise<PersonaFit> {
   const open = pub.find((s) => s.id === id)!;
   const p = (priv as Record<string, Private>)[id];
   const who = p.prompt.slice(0, p.prompt.indexOf("ТВОЯ СИТУАЦИЯ")).trim();
@@ -70,7 +79,7 @@ ${p.concerns}
 РАССРОЧКА: ${INSTALLMENT_ASKERS.has(id) ? "деньги для этого пациента — реальная трудность, он может спросить о рассрочке или кредите." : "этот пациент НЕ спрашивает о рассрочке и кредите и не жалуется, что ему тяжело заплатить."}
 
 ФАКТЫ НОВОЙ КЛИНИКИ
-${siteFactsFromFacts(direction ? factsForDirection(facts, direction) : facts)}${direction ? directionTask(direction) : ""}`;
+${siteFactsFromFacts(direction ? factsForDirection(facts, direction) : facts)}${direction ? directionTask(direction) : ""}${wishes.trim() ? wishesTask(wishes.trim()) : ""}`;
   const fit = await gemmaJson({ system: SYSTEM, prompt, schema: FitSchema, tier: "smart", thinking: "default", maxOutputTokens: 8192 });
   const out = { ...fit, concerns: limitInstallments(id, fit.concerns) };
   return direction ? { ...out, direction } : out;
@@ -91,11 +100,12 @@ export function startPersonaFit(clinicId: number, fit: typeof fitPersona = fitPe
   db().prepare("UPDATE legends SET personas_status = 'pending', personas_error = NULL WHERE id = ?").run(row.id);
   const facts = JSON.parse(row.facts) as Fact[];
   const plan = assignDirections(getDirections(clinicId));
+  const wishes = getWishes(clinicId);
   fitting.add(clinicId);
   fitTried.set(clinicId, Date.now());
   void (async () => {
     try {
-      const results = await Promise.allSettled(pub.map(async (s) => [s.id, await fit(s.id, facts, plan[s.id])] as const));
+      const results = await Promise.allSettled(pub.map(async (s) => [s.id, await fit(s.id, facts, plan[s.id], wishes)] as const));
       const fitted = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
       const failed = results.flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
       if (failed.length) console.error("[persona-fit]", failed[0]);

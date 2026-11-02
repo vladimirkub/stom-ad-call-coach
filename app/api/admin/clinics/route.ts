@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClinic, listClinics } from "@/lib/auth";
 import { requireOwner } from "@/lib/session";
+import { clinicsWithProposals } from "@/lib/proposals";
 
 export async function GET() {
   const gate = await requireOwner();
   if ("denied" in gate) return gate.denied;
-  return NextResponse.json({ clinics: listClinics() });
+  const waiting = clinicsWithProposals();
+  return NextResponse.json({ clinics: listClinics().map((c) => ({ ...c, proposal: waiting.has(c.id) })) });
 }
 
 export async function POST(req: Request) {

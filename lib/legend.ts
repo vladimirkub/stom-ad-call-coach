@@ -81,6 +81,31 @@ export function setOffers(clinicId: number, raw: unknown) {
   return offers;
 }
 
+/**
+ * The clinic's wishes for training, in its own words: what the administrators should be tested on ("objections about
+ * anaesthesia in children's dentistry", "tell about the doctors' experience"). Not facts about the clinic: the
+ * patients raise these topics (lib/persona-fit.ts) and the evaluator checks them (lib/evaluation.ts).
+ */
+export function getWishes(clinicId: number): string {
+  const row = db().prepare("SELECT wishes FROM clinics WHERE id = ?").get(clinicId) as { wishes: string } | undefined;
+  if (!row) throw new Error("Клиника не найдена");
+  return row.wishes;
+}
+
+const MAX_WISHES = 4000;
+export function cleanWishes(raw: unknown): string {
+  const wishes = String(raw ?? "").replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (wishes.length > MAX_WISHES) throw new Error(`Пожелания слишком длинные: ${wishes.length} символов из ${MAX_WISHES}`);
+  return wishes;
+}
+
+export function setWishes(clinicId: number, raw: unknown) {
+  const wishes = cleanWishes(raw);
+  const r = db().prepare("UPDATE clinics SET wishes = ? WHERE id = ?").run(wishes, clinicId);
+  if (!r.changes) throw new Error("Клиника не найдена");
+  return wishes;
+}
+
 // ---- storage ----
 
 type Row = { id: number; status: LegendStatus; version: number | null; facts: string; pages: string; error: string | null; created_at: number; updated_at: number; approved_at: number | null };

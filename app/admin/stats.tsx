@@ -40,7 +40,10 @@ type Training = {
   id: string; patient: string; trainee: string; userId: number; mode: string; direction: string; startedAt: number; duration: number; endedBy: string | null;
   transcript: { role: "user" | "agent"; text: string }[];
   live: string[];
-  evaluation: { total: number; summary: string; appointmentBooked: boolean; checklist: { id: string; label: string; done: boolean; evidence?: string }[]; improvements?: string[]; strengths?: string[] };
+  evaluation: {
+    total: number; summary: string; appointmentBooked: boolean; checklist: { id: string; label: string; done: boolean; evidence?: string }[]; improvements?: string[]; strengths?: string[];
+    wishes?: { topic: string; done: boolean; note: string }[];
+  };
 };
 
 function useStats<T>(query: string) {
@@ -425,6 +428,19 @@ function TrainingView({ id, go }: { id: string; go: (v: StatsView) => void }) {
               {passed.map((c) => <li key={c.id}>{c.label}</li>)}
             </ul>
           </Panel>
+          {!!ev.wishes?.length && (
+            <Panel>
+              <PanelTitle>По пожеланиям клиники</PanelTitle>
+              <ul className="mt-3 flex flex-col gap-2 text-sm">
+                {ev.wishes.map((w, i) => (
+                  <li key={i}>
+                    <span className={w.done ? "text-accent" : "text-rose-300"}>{w.done ? "✓" : "✗"}</span> <span className="text-slate-200">{w.topic}</span>
+                    {w.note && <span className="block text-xs text-slate-500">{w.note}</span>}
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
         </div>
         <Panel>
           <PanelTitle>Диалог</PanelTitle>

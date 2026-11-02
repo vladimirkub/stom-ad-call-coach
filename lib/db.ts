@@ -76,6 +76,22 @@ CREATE TABLE IF NOT EXISTS usage (
   status TEXT,
   synced_at INTEGER
 );
+CREATE TABLE IF NOT EXISTS proposals (
+  id INTEGER PRIMARY KEY,
+  clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
+  directions TEXT NOT NULL,
+  facts TEXT NOT NULL,
+  wishes TEXT,
+  base_version INTEGER,
+  comment TEXT NOT NULL DEFAULT '',
+  answer TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  decided_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS proposals_clinic ON proposals(clinic_id, status);
 CREATE INDEX IF NOT EXISTS usage_user ON usage(user_id, started_at);
 CREATE INDEX IF NOT EXISTS legends_clinic ON legends(clinic_id, status);
 CREATE INDEX IF NOT EXISTS trainings_user ON trainings(user_id, started_at);
@@ -99,6 +115,9 @@ export function db(): DatabaseSync {
     if (!clinicCols.some((c) => c.name === "sites")) conn.exec("ALTER TABLE clinics ADD COLUMN sites TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
     if (!clinicCols.some((c) => c.name === "directions")) conn.exec("ALTER TABLE clinics ADD COLUMN directions TEXT NOT NULL DEFAULT '[]'");
+    if (!clinicCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE clinics ADD COLUMN wishes TEXT NOT NULL DEFAULT ''");
+    const proposalCols = conn.prepare("PRAGMA table_info(proposals)").all() as { name: string }[];
+    if (!proposalCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE proposals ADD COLUMN wishes TEXT");
     // The clinic manager role (Nov 2026): SQLite cannot widen a CHECK, so an older users table is rebuilt once, and each
     // clinic's shared "admin.<clinic>" account, which managers already use, becomes the manager.
     const usersSql = (conn.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get() as { sql: string }).sql;
