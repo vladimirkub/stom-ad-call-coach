@@ -2,6 +2,8 @@
 // patients adapted to its services, prices and offers. Built from the clinic's approved legend; without one (or for the
 // owner) it is the shared demo clinic from clinic.json and the default personas.
 import pub from "./scenarios-public.json" with { type: "json" };
+import { INBOUND_RULE, OUTBOUND_RULE } from "./patient-behavior.ts";
+import type { CallDirection } from "./direction.ts";
 import priv from "./scenarios-private.json" with { type: "json" };
 import clinic from "./clinic.json" with { type: "json" };
 import { db } from "./db.ts";
@@ -77,7 +79,7 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
 }
 
 /** The dynamic variables of a voice patient: the same clinic-specific text the text mode gets. */
-export function personaVars(ctx: ClinicContext, scenarioId: string) {
+export function personaVars(ctx: ClinicContext, scenarioId: string, direction: CallDirection = "outbound") {
   const p = ctx.personas[scenarioId];
-  return { situation: p.situation, concerns: p.concerns, site_facts: ctx.siteFacts };
+  return { situation: p.situation, concerns: p.concerns, site_facts: ctx.siteFacts, call_direction: direction === "inbound" ? INBOUND_RULE : OUTBOUND_RULE };
 }

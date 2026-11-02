@@ -2,8 +2,7 @@
 // Only trainees count (the owner's own test calls and the clinics' technical "admin" accounts are left out, lib/auth.ts). Windows are rolling: last 7 / 30 days.
 import { db } from "./db.ts";
 import { COUNTED_TRAINEE } from "./auth.ts";
-import { SKILL_KEYS, type SkillKey } from "./rubric.ts";
-import { rubricFor } from "./scoring.ts";
+import { RUBRIC, SKILL_KEYS, type SkillKey } from "./rubric.ts";
 import { TEMPO } from "./tempo.ts";
 import scenarios from "./scenarios-public.json" with { type: "json" };
 
@@ -19,7 +18,7 @@ const skillAverages = (where: string, ...args: (number | string)[]) => {
 
 /** Checklist items missed most often across these evaluated calls, with the share of calls that missed each. */
 function topMisses(rows: { evaluation: string }[], limit = 6) {
-  const rubric = rubricFor(false);
+  const rubric = RUBRIC;
   const missed = new Map<string, number>();
   for (const r of rows) {
     const checklist = (JSON.parse(r.evaluation) as { checklist?: { id: string; done: boolean }[] }).checklist ?? [];

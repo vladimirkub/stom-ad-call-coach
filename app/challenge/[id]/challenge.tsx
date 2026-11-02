@@ -11,9 +11,11 @@ import { TEMPO_NOTES, TEMPO_NOTE_TEXT } from "@/lib/tempo";
 import { Shell, Panel } from "../../ui";
 import { CallBar, CallTimer, MicButton, Status } from "../../call-ui";
 import { Book, ListCheck, Phone, Target } from "../../icons";
-import { CHECKLIST_TOTAL, LiveChecklist, useLiveChecklist } from "../../live-checklist";
+import { LiveChecklist, checklistTotal, useLiveChecklist } from "../../live-checklist";
 import { context, initials, quote, years } from "../../patient-grid";
 import { useHome } from "../../home-link";
+import { DirectionSwitch, useDirection } from "../../direction-switch";
+import type { CallDirection } from "@/lib/direction";
 
 type Mode = "idle" | "voice" | "text";
 
@@ -38,6 +40,11 @@ function Call({ id }: { id: string }) {
   const [hungUp, setHungUp] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const home = useHome();
+  // Callback on a request or the patient's own call (lib/direction.ts); fixed once the call starts.
+  const [direction, setDirection] = useDirection();
+  const inbound = direction === "inbound";
+  // On an inbound call the administrator does not know who is calling: the name shows up only in the results.
+  const patientLabel = inbound ? "Пациент" : scenario.short;
   // Set when the call starts; the evaluation saves the call to the trainee's history under this id.
   const attempt = useRef<{ id: string; startedAt: number } | null>(null);
   const beginAttempt = () => {
@@ -70,7 +77,7 @@ function Call({ id }: { id: string }) {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
-  async function startVoice() {
+  async function startVoice(dir: CallDirection = direction) {
     setError(null);
     setBusy(true);
     try {
@@ -80,7 +87,7 @@ function Call({ id }: { id: string }) {
       } catch {
         throw new Error("Нет доступа к микрофону. Разрешите его в настройках браузера или используйте текстовый режим.");
       }
-      const res = await fetch(`/api/signed-url?scenario=${id}`);
+      const res = await fetch(`/api/signed-url?scenario=${id}&direction=${dir}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
       await startSessionFast(conversation, body);
@@ -96,16 +103,20 @@ function Call({ id }: { id: string }) {
   // The one-button page (/call) opens the call with ?start=voice: dial at once, once, and drop the flag from the address.
   const autoStarted = useRef(false);
   useEffect(() => {
-    if (autoStarted.current || new URLSearchParams(window.location.search).get("start") !== "voice") return;
+    const q = new URLSearchParams(window.location.search);
+    if (autoStarted.current || q.get("start") !== "voice") return;
     autoStarted.current = true;
+    const dir: CallDirection = q.get("dir") === "inbound" ? "inbound" : "outbound";
+    setDirection(dir);
     router.replace(`/challenge/${id}`);
-    void startVoice();
+    void startVoice(dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function startText() {
     setError(null);
-    setTranscript([{ role: "agent", text: scenario.firstMessage }]);
+    // Inbound: the administrator picks up and writes first.
+    setTranscript(inbound ? [] : [{ role: "agent", text: scenario.firstMessage }]);
     beginAttempt();
     setMode("text");
   }
@@ -127,7 +138,7 @@ function Call({ id }: { id: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenarioId: id, transcript: next }),
+        body: JSON.stringify({ scenarioId: id, direction, transcript: next }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Пациент не смог ответить");
@@ -152,6 +163,7 @@ function Call({ id }: { id: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scenarioId: id,
+          direction,
           transcript,
           attempt: attempt.current && {
             ...attempt.current,
@@ -164,7 +176,7 @@ function Call({ id }: { id: string }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось оценить сессию");
-      sessionStorage.setItem("dealbreaker:result", JSON.stringify({ id: crypto.randomUUID(), result: body, transcript, patient: scenario.short, scenarioId: id }));
+      sessionStorage.setItem("dealbreaker:result", JSON.stringify({ id: crypto.randomUUID(), result: body, transcript, patient: scenario.short, scenarioId: id, direction }));
       router.push("/results");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось оценить сессию");
@@ -173,7 +185,8 @@ function Call({ id }: { id: string }) {
   }
 
   const live = mode !== "idle";
-  const { done, checking } = useLiveChecklist(id, transcript, live && !finishing);
+  const { done, checking } = useLiveChecklist(id, transcript, live && !finishing, direction);
+  const total = checklistTotal(direction);
   // On phones the patient's voice from the speaker reaches the microphone and echo cancellation often misses it: the
   // patient then hears herself as the operator and keeps interrupting herself. So on touch devices the call is
   // half-duplex: the microphone is off while the patient speaks and comes back a moment after she stops.
@@ -229,22 +242,28 @@ function Call({ id }: { id: string }) {
     <Shell width="max-w-[1440px]" back={home === "/call" ? { href: "/call", label: "На главную" } : { href: "/app", label: "Другой пациент" }}>
       <header className="rise mt-8 mb-5 flex items-start gap-4" style={{ animationDelay: "60ms" }}>
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/[0.06] text-lg font-semibold tracking-tight text-slate-100 ring-1 ring-white/10">
-          {initials(scenario.name)}
+          {inbound ? <Phone className="h-6 w-6" /> : initials(scenario.name)}
         </span>
         <div className="min-w-0">
-          <p className="eyebrow">{scenario.short}, {years(scenario.age)} · {scenario.tag}</p>
-          <h1 className="mt-1 text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-4xl">{quote(scenario.title)}</h1>
+          <p className="eyebrow">{inbound ? "Входящий звонок · номер не определён" : `${scenario.short}, ${years(scenario.age)} · ${scenario.tag}`}</p>
+          <h1 className="mt-1 text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-4xl">{inbound ? "Пациент звонит в клинику" : quote(scenario.title)}</h1>
         </div>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
         <Panel delay={100} innerClassName="h-full p-4">
-          <p className="text-xs font-medium text-slate-500">Карточка заявки</p>
-          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">{clinicData ? context(clinicData.leads[id] ?? scenario.lead) : "\u00a0"}</p>
+          <p className="text-xs font-medium text-slate-500">{inbound ? "Кто звонит" : "Карточка заявки"}</p>
+          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">
+            {inbound
+              ? "Вы не знаете, кто звонит и зачем. Возьмите трубку первым: назовите клинику и себя, узнайте имя и что интересует пациента."
+              : clinicData ? context(clinicData.leads[id] ?? scenario.lead) : "\u00a0"}
+          </p>
         </Panel>
         <Panel delay={140} tone="accent" innerClassName="h-full p-4">
           <p className="flex items-center gap-1.5 text-xs font-medium text-accent"><Target className="h-3.5 w-3.5" />Ваша цель</p>
-          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">Вы оператор. Запишите пациента на приём и убедитесь, что он придёт.</p>
+          <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">
+            {inbound ? "Вы администратор. Ответьте на звонок, запишите пациента на приём, возьмите телефон и убедитесь, что он придёт." : "Вы оператор. Запишите пациента на приём и убедитесь, что он придёт."}
+          </p>
         </Panel>
       </div>
 
@@ -268,20 +287,21 @@ function Call({ id }: { id: string }) {
         </details>
         <details className="rise group rounded-2xl bg-white/[0.03] p-4 text-sm ring-1 ring-inset ring-white/[0.06] lg:hidden" style={{ animationDelay: "200ms" }}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-slate-200">
-            <span className="flex items-center gap-2"><ListCheck className="h-4 w-4 text-slate-500" />Чек-лист звонка <span className="tabular-nums text-slate-500">{done.size}/{CHECKLIST_TOTAL}</span></span>
+            <span className="flex items-center gap-2"><ListCheck className="h-4 w-4 text-slate-500" />Чек-лист звонка <span className="tabular-nums text-slate-500">{done.size}/{total}</span></span>
             <span className="text-xs text-slate-500 group-open:hidden">Открыть</span>
             <span className="hidden text-xs text-slate-500 group-open:inline">Свернуть</span>
           </summary>
-          <LiveChecklist done={done} checking={checking} className="mt-3" />
+          <LiveChecklist done={done} checking={checking} direction={direction} className="mt-3" />
         </details>
 
         <div className="flex min-w-0 flex-col">
           {error && <div role="alert" className="alert alert-error mb-3">{error}</div>}
 
+          {!live && <DirectionSwitch value={direction} onChange={setDirection} className="rise mb-3" />}
           {!live && (
             <div className="rise mb-4 flex flex-col gap-2.5 sm:flex-row" style={{ animationDelay: "220ms" }}>
-              <button onClick={startVoice} disabled={busy} className="btn btn-primary group/btn py-1.5 pr-1.5 pl-6 sm:flex-1 sm:justify-between">
-                {busy ? "Набираем номер…" : "Позвонить пациенту голосом"}
+              <button onClick={() => startVoice()} disabled={busy} className="btn btn-primary group/btn py-1.5 pr-1.5 pl-6 sm:flex-1 sm:justify-between">
+                {busy ? (inbound ? "Соединяем…" : "Набираем номер…") : inbound ? "Ответить на звонок голосом" : "Позвонить пациенту голосом"}
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 group-hover/btn:scale-105"><Phone className="h-4 w-4" /></span>
               </button>
               <button onClick={startText} className="btn btn-ghost">Текстовый режим</button>
@@ -295,12 +315,14 @@ function Call({ id }: { id: string }) {
 
           <section aria-label="Транскрипт" className="flex min-h-64 flex-1 flex-col gap-2.5 rounded-3xl bg-ink-900/60 p-4 ring-1 ring-inset ring-white/[0.06]">
             {transcript.length === 0 && (
-              <p className="m-auto max-w-[40ch] text-center text-sm text-pretty text-slate-500">Здесь появится транскрипт звонка. Пациент возьмёт трубку первым, а вы представляетесь.</p>
+              <p className="m-auto max-w-[40ch] text-center text-sm text-pretty text-slate-500">
+                {inbound ? "Здесь появится транскрипт звонка. Вы берёте трубку и говорите первым: клиника, ваше имя, чем помочь." : "Здесь появится транскрипт звонка. Пациент возьмёт трубку первым, а вы представляетесь."}
+              </p>
             )}
             {transcript.map((t, i) => (
               <div key={i} className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`bubble ${t.role === "user" ? "bubble-mine" : "bubble-theirs"}`}>
-                  <span className="bubble-label">{t.role === "user" ? "Вы, оператор" : scenario.short}</span>
+                  <span className="bubble-label">{t.role === "user" ? (inbound ? "Вы, администратор" : "Вы, оператор") : patientLabel}</span>
                   {t.text}
                 </div>
               </div>
@@ -322,8 +344,8 @@ function Call({ id }: { id: string }) {
                     : mode === "voice"
                       ? speaking
                         ? halfDuplex
-                          ? `${scenario.short} говорит, дослушайте…`
-                          : `${scenario.short} говорит…`
+                          ? `${patientLabel} говорит, дослушайте…`
+                          : `${patientLabel} говорит…`
                         : autoMuted && !userMuted
                           ? "Секунду, сейчас включится микрофон"
                           : micOn
@@ -349,7 +371,7 @@ function Call({ id }: { id: string }) {
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    placeholder={mode === "voice" ? "Или напишите сообщение…" : "Напишите реплику оператора…"}
+                    placeholder={mode === "voice" ? "Или напишите сообщение…" : inbound && transcript.length === 0 ? "Возьмите трубку: «Клиника …, администратор …, здравствуйте!»" : inbound ? "Напишите реплику администратора…" : "Напишите реплику оператора…"}
                     className="field min-w-0 flex-1 rounded-full px-5 py-3"
                   />
                   <button disabled={busy || !draft.trim()} className="btn btn-primary">Отправить</button>
@@ -364,12 +386,12 @@ function Call({ id }: { id: string }) {
             <div className="bezel-core max-h-[calc(100dvh-2.6rem)] overflow-y-auto p-4">
               <p className="flex items-center justify-between gap-3 text-sm font-medium text-slate-100">
                 <span className="flex items-center gap-2"><ListCheck className="h-4 w-4 text-accent" />Чек-лист звонка</span>
-                <span className="tabular-nums text-slate-400">{done.size}/{CHECKLIST_TOTAL}</span>
+                <span className="tabular-nums text-slate-400">{done.size}/{total}</span>
               </p>
               <div className="mt-2.5 h-1 rounded-full bg-white/[0.06]">
-                <div className="h-1 rounded-full bg-accent transition-[width] duration-700 ease-[var(--ease-spring)]" style={{ width: `${(done.size / CHECKLIST_TOTAL) * 100}%` }} />
+                <div className="h-1 rounded-full bg-accent transition-[width] duration-700 ease-[var(--ease-spring)]" style={{ width: `${(done.size / total) * 100}%` }} />
               </div>
-              <LiveChecklist done={done} checking={checking} className="mt-4" />
+              <LiveChecklist done={done} checking={checking} direction={direction} className="mt-4" />
             </div>
           </div>
         </aside>

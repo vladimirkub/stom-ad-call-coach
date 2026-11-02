@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { FAST_PROMPT, FAST_TURN, OPERATOR_TTS, PATIENT_CONVERSATION, PATIENT_TURN, PATIENT_LLM_OVERRIDES, PATIENT_TTS_OVERRIDES } from "../lib/voice-config.ts";
 import { OPERATOR_VOICE_ID, operatorFirstMessage, operatorPromptConfig } from "../lib/operator.ts";
-import { END_CALL_TOOL, agentPrompt } from "../lib/patient-behavior.ts";
+import { END_CALL_TOOL, OUTBOUND_RULE, agentPrompt } from "../lib/patient-behavior.ts";
 
 const apiKey = process.env.ELEVENLABS_API_KEY;
 if (!apiKey) {
@@ -28,11 +28,14 @@ const jobs = pub.map((s) => {
       turn: PATIENT_TURN,
       conversation: PATIENT_CONVERSATION,
       agent: {
-        first_message: s.firstMessage,
+        // Empty on an inbound call: the patient then waits for the administrator to pick up and speak (lib/direction.ts).
+        first_message: "{{first_line}}",
         language: "ru",
-        // {{situation}}, {{concerns}} and {{site_facts}} are filled per call for the trainee's clinic (/api/signed-url);
-        // these defaults are the shared demo clinic, used when a call passes nothing.
-        dynamic_variables: { dynamic_variable_placeholders: { situation: p.situation, concerns: p.concerns, site_facts: clinic.promptFacts } },
+        // {{situation}}, {{concerns}}, {{site_facts}}, {{call_direction}} and {{first_line}} are filled per call for the
+        // trainee's clinic and the call's direction (/api/signed-url); these defaults are the shared demo clinic's callback.
+        dynamic_variables: {
+          dynamic_variable_placeholders: { situation: p.situation, concerns: p.concerns, site_facts: clinic.promptFacts, call_direction: OUTBOUND_RULE, first_line: s.firstMessage },
+        },
         prompt: {
           prompt: agentPrompt(p.prompt),
           llm: process.env.ELEVENLABS_LLM || "gemini-2.5-flash",

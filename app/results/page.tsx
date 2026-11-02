@@ -17,6 +17,7 @@ type Saved = {
   scenarioId?: string;
   modelScript?: ModelScript;
   mode?: "virtual";
+  direction?: "outbound" | "inbound";
   learn?: { added: number; reinforced: number; total: number; skipped?: string };
 };
 
@@ -142,7 +143,7 @@ export default function Results() {
           <div aria-hidden className="pointer-events-none absolute -top-24 -right-20 h-64 w-64 rounded-full bg-accent/[0.12] blur-3xl" />
           <div className="relative flex flex-wrap items-end justify-between gap-6">
             <div>
-              <p className="eyebrow">{virtual ? "Оценка виртуального оператора" : real ? "Оценка реального звонка" : `Итоговый балл · ${data.patient}`}</p>
+              <p className="eyebrow">{virtual ? "Оценка виртуального оператора" : real ? "Оценка реального звонка" : `Итоговый балл · ${data.patient}${data.direction === "inbound" ? " · входящий звонок" : ""}`}</p>
               <p className="mt-2 flex items-baseline gap-1 font-semibold tracking-[-0.04em] tabular-nums">
                 <span className="text-7xl text-slate-50 sm:text-8xl">{result.total}</span>
                 <span className="text-2xl text-slate-500">/100</span>

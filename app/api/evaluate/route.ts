@@ -9,15 +9,17 @@ import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext, currentUser } from "@/lib/session";
 import { parseAttempt, saveTraining } from "@/lib/trainings";
 import { FEATURES, OFF_MESSAGE } from "@/lib/features";
+import { parseDirection } from "@/lib/direction";
 
 export async function POST(req: Request) {
   const limited = rateLimit(req, "llm", 12);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
   const real = body?.scenarioId === "real";
+  const direction = parseDirection(body?.direction);
   if (real && !FEATURES.realCalls) return NextResponse.json({ error: OFF_MESSAGE }, { status: 403 });
   const ctx = await currentClinicContext();
-  const scenario = real ? null : getScenario(body?.scenarioId, ctx);
+  const scenario = real ? null : getScenario(body?.scenarioId, ctx, direction);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if ((!real && !scenario) || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   const transcript = parsed.data;
@@ -28,11 +30,11 @@ export async function POST(req: Request) {
   const prompt = evaluationPrompt({ scenario, memo: ctx.memo, transcript });
 
   try {
-    const ev = await gemmaJson({ system: evaluationSystem(real), prompt, schema: EvaluationSchema, tier: "smart" });
+    const ev = await gemmaJson({ system: evaluationSystem(real, direction), prompt, schema: EvaluationSchema, tier: "smart" });
 
     const passed = new Set(ev.passed);
     const notes = new Map(ev.missed.map((m) => [m.id, m.note]));
-    const checklist: ChecklistItem[] = rubricFor(real).map((r) => ({
+    const checklist: ChecklistItem[] = rubricFor(real, direction).map((r) => ({
       ...r,
       done: passed.has(r.id) && !notes.has(r.id),
       evidence: notes.get(r.id),
@@ -69,7 +71,7 @@ export async function POST(req: Request) {
     // Calls with a virtual patient go into the trainee's history; real-call analysis does not.
     const user = attempt ? await currentUser() : null;
     if (attempt && user && scenario) {
-      saveTraining({ attempt, userId: user.id, clinicId: user.clinic?.id ?? null, scenarioId: scenario.id, legendVersion: ctx.legendVersion, transcript, result });
+      saveTraining({ attempt, userId: user.id, clinicId: user.clinic?.id ?? null, scenarioId: scenario.id, legendVersion: ctx.legendVersion, direction, transcript, result });
     }
     return NextResponse.json(result);
   } catch (e) {

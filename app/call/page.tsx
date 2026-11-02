@@ -7,6 +7,7 @@ import { getHistory } from "@/lib/history";
 import { setHome } from "@/lib/home";
 import { Brand } from "../ui";
 import { Phone } from "../icons";
+import { DirectionSwitch, useDirection } from "../direction-switch";
 
 /** The patient for the next call: one tried least often in this browser, never the last one, random among the rest. */
 function pickPatient(): string {
@@ -24,6 +25,8 @@ function pickPatient(): string {
 export default function SimpleCall() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [direction, setDirection] = useDirection();
+  const inbound = direction === "inbound";
   useEffect(() => setHome("/call"), []);
 
   async function call() {
@@ -33,7 +36,7 @@ export default function SimpleCall() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
     } catch {}
-    router.push(`/challenge/${pickPatient()}?start=voice`);
+    router.push(`/challenge/${pickPatient()}?start=voice&dir=${direction}`);
   }
 
   return (
@@ -43,11 +46,13 @@ export default function SimpleCall() {
       </nav>
 
       <section className="flex flex-1 flex-col items-center justify-center gap-10 py-12 text-center">
+        <DirectionSwitch value={direction} onChange={setDirection} className="rise w-full max-w-sm" />
+
         <button
           type="button"
           onClick={call}
           disabled={busy}
-          aria-label="Звонок пациенту"
+          aria-label={inbound ? "Входящий звонок" : "Звонок пациенту"}
           className="rise group relative flex h-64 w-64 flex-col items-center justify-center gap-4 rounded-full bg-accent text-ink-950 transition duration-500 ease-[var(--ease-spring)] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-80 sm:h-72 sm:w-72"
           style={{ animationDelay: "80ms" }}
         >
@@ -56,12 +61,14 @@ export default function SimpleCall() {
             <Phone className="h-9 w-9" />
           </span>
           <span className="max-w-[9ch] text-2xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-[1.75rem]">
-            {busy ? "Набираем…" : "Звонок пациенту"}
+            {busy ? (inbound ? "Соединяем…" : "Набираем…") : inbound ? "Ответить на звонок" : "Звонок пациенту"}
           </span>
         </button>
 
         <p className="rise max-w-[40ch] text-sm leading-relaxed text-pretty text-slate-400" style={{ animationDelay: "160ms" }}>
-          Позвонит случайный пациент из тех, с кем вы говорили реже. Запишите его на приём примерно за 3 минуты. После звонка получите оценку.
+          {inbound
+            ? "Позвонит случайный пациент, который увидел рекламу или сайт. Возьмите трубку первым, узнайте имя и запрос, запишите на приём примерно за 3 минуты."
+            : "Позвонит случайный пациент из тех, с кем вы говорили реже. Запишите его на приём примерно за 3 минуты. После звонка получите оценку."}
         </p>
       </section>
     </main>

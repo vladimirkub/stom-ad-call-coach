@@ -1,4 +1,5 @@
 import { RUBRIC, SKILL_KEYS, type RubricItem, type SkillKey } from "./rubric.ts";
+import type { CallDirection } from "./direction.ts";
 
 export const SKILLS = [
   { key: "discovery", label: "Контакт и выявление потребностей", weight: 0.25, hint: "Представился, уточнил запрос, открытые вопросы, нашёл скрытую причину" },
@@ -27,12 +28,12 @@ export function totalScore(scores: Scores): number {
   return Math.round(sum * 100);
 }
 
-/** Rubric applicable to this evaluation (real calls have no known hidden objection). */
-export function rubricFor(real: boolean): RubricItem[] {
-  return RUBRIC.filter((r) => !(real && r.scenarioOnly));
+/** Rubric applicable to this evaluation (real calls have no known hidden objection) and call direction. */
+export function rubricFor(real: boolean, direction: CallDirection = "outbound"): RubricItem[] {
+  return RUBRIC.filter((r) => !(real && r.scenarioOnly) && (!r.only || r.only === direction));
 }
 
 /** The part of the rubric the model judges from the transcript; `auto` items are decided in code. */
-export function modelRubric(real: boolean): RubricItem[] {
-  return rubricFor(real).filter((r) => !r.auto);
+export function modelRubric(real: boolean, direction: CallDirection = "outbound"): RubricItem[] {
+  return rubricFor(real, direction).filter((r) => !r.auto);
 }

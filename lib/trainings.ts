@@ -2,6 +2,7 @@
 // The client gives each call an id when it starts, so evaluating the same call again updates the row instead of adding one.
 import { db } from "./db.ts";
 import type { EvaluationResult, Turn } from "./schemas.ts";
+import type { CallDirection } from "./direction.ts";
 
 export type TrainingMode = "voice" | "text";
 export type EndedBy = "patient" | "operator";
@@ -35,6 +36,8 @@ export function saveTraining(t: {
   scenarioId: string;
   /** Version of the clinic legend the call ran on; null for the shared demo clinic. */
   legendVersion?: number | null;
+  /** Callback on a request (the default) or the patient's own call. */
+  direction?: CallDirection;
   transcript: Turn[];
   result: EvaluationResult;
   now?: number;
@@ -44,8 +47,8 @@ export function saveTraining(t: {
   db()
     .prepare(
       `INSERT INTO trainings (id, user_id, clinic_id, scenario_id, mode, legend_version, started_at, duration_s, ended_by,
-         transcript, live_checklist, scores, total, booked, evaluation, evaluated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         transcript, live_checklist, scores, total, booked, evaluation, evaluated_at, direction)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET transcript = excluded.transcript, live_checklist = excluded.live_checklist,
          scores = excluded.scores, total = excluded.total, booked = excluded.booked, evaluation = excluded.evaluation,
          duration_s = excluded.duration_s, ended_by = excluded.ended_by, evaluated_at = excluded.evaluated_at
@@ -68,6 +71,7 @@ export function saveTraining(t: {
       result.appointmentBooked ? 1 : 0,
       JSON.stringify(result),
       now,
+      t.direction ?? "outbound",
     );
 }
 

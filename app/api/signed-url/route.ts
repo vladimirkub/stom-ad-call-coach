@@ -4,11 +4,15 @@ import { scenarioIds } from "@/lib/scenarios";
 import { agentIdFor, conversationTokenFor } from "@/lib/agents";
 import { personaVars } from "@/lib/clinic-context";
 import { currentClinicContext } from "@/lib/session";
+import { parseDirection } from "@/lib/direction";
+import pub from "@/lib/scenarios-public.json";
 
 export async function GET(req: Request) {
   const limited = rateLimit(req, "voice", 10);
   if (limited) return limited;
-  const scenario = new URL(req.url).searchParams.get("scenario") ?? "";
+  const q = new URL(req.url).searchParams;
+  const scenario = q.get("scenario") ?? "";
+  const direction = parseDirection(q.get("direction"));
   if (!scenarioIds.includes(scenario)) return NextResponse.json({ error: "Неизвестный пациент" }, { status: 400 });
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const agentId = agentIdFor(scenario);
@@ -23,8 +27,12 @@ export async function GET(req: Request) {
     if (!res.ok) return NextResponse.json({ error: `ElevenLabs вернул ошибку ${res.status}` }, { status: 502 });
     const body = (await res.json()) as { signed_url?: string };
     if (!body.signed_url) return NextResponse.json({ error: "ElevenLabs не вернул signed URL" }, { status: 502 });
-    // The agent prompt keeps {{situation}}, {{concerns}} and {{site_facts}} open; the call fills them for this clinic.
-    const dynamicVariables = personaVars(await currentClinicContext(), scenario);
+    // The agent prompt keeps {{situation}}, {{concerns}}, {{site_facts}} and {{call_direction}} open; the call fills them
+    // for this clinic and direction. On an inbound call the first line is empty: the patient waits for the administrator.
+    const dynamicVariables = {
+      ...personaVars(await currentClinicContext(), scenario, direction),
+      first_line: direction === "inbound" ? "" : (pub.find((s) => s.id === scenario)?.firstMessage ?? ""),
+    };
     return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId), dynamicVariables });
   } catch {
     return NextResponse.json({ error: "Не удалось связаться с ElevenLabs" }, { status: 502 });

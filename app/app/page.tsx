@@ -6,6 +6,7 @@ import { Brand } from "../ui";
 import { ArrowUpRight, Calculator, Phone, Spark } from "../icons";
 import { FEATURES } from "@/lib/features";
 import { RememberHome } from "../home-link";
+import DirectionHeader from "../direction-header";
 
 const TOOLS = [
   { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone, on: FEATURES.realCalls },
@@ -36,13 +37,7 @@ export default function Workspace() {
         <section aria-labelledby="trainer" className="flex min-h-0 flex-col gap-4 lg:col-span-4 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
           <header className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-2" style={{ animationDelay: "60ms" }}>
             <div className="max-w-[60ch] lg:max-w-[calc(75%-15px)]">
-              <p className="text-xs font-medium text-accent">Режим 1 · вы оператор</p>
-              <h1 id="trainer" className="mt-1.5 text-3xl font-semibold leading-[1.05] tracking-[-0.03em] text-balance lg:text-[min(2.25rem,2.4vw)] short:text-[min(1.75rem,2.4vw)] low:mt-1">
-                Позвоните пациенту и запишите на приём
-              </h1>
-              <p className="mt-2 text-sm text-pretty text-slate-400 short:mt-1 short:text-[13px] low:text-xs">
-                Пациента играет ИИ. Отработайте возражение голосом или текстом, а после звонка получите оценку по чек-листу.
-              </p>
+              <DirectionHeader />
             </div>
           </header>
           <PatientGrid>

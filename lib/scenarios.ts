@@ -3,13 +3,14 @@ import pub from "./scenarios-public.json" with { type: "json" };
 import priv from "./scenarios-private.json" with { type: "json" };
 import { patientPrompt } from "./patient-behavior.ts";
 import { clinicContext, personaVars, type ClinicContext } from "./clinic-context.ts";
+import type { CallDirection } from "./direction.ts";
 
 type Private = { voiceId: string; prompt: string };
 
 export const scenarioIds = pub.map((s) => s.id);
 
 /** A patient as this clinic's trainees meet them (the shared demo clinic when `ctx` is omitted). */
-export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null)) {
+export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null), direction: CallDirection = "outbound") {
   const open = pub.find((s) => s.id === id);
   const secret = (priv as Record<string, Private>)[String(id)];
   if (!open || !secret) return null;
@@ -20,6 +21,6 @@ export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null
     lead: fit.lead,
     hiddenObjection: fit.hiddenObjection,
     showUpRisk: fit.showUpRisk,
-    prompt: patientPrompt(secret.prompt, personaVars(ctx, open.id)),
+    prompt: patientPrompt(secret.prompt, personaVars(ctx, open.id, direction)),
   };
 }

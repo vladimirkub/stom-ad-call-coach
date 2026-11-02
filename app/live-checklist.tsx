@@ -3,16 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { SKILLS, modelRubric } from "@/lib/scoring";
 import type { Turn } from "@/lib/schemas";
+import type { CallDirection } from "@/lib/direction";
 import { Check } from "./icons";
 
-const RUBRIC = modelRubric(false);
-export const CHECKLIST_TOTAL = RUBRIC.length;
+/** How many items the live checklist shows for a call in this direction. */
+export const checklistTotal = (direction: CallDirection) => modelRubric(false, direction).length;
 
 /**
  * Re-checks the transcript after each new operator line (debounced, one request at a time).
  * Ticks only accumulate during a call: the final verdict comes from the evaluation on the results page.
  */
-export function useLiveChecklist(scenarioId: string, transcript: Turn[], active: boolean) {
+export function useLiveChecklist(scenarioId: string, transcript: Turn[], active: boolean, direction: CallDirection) {
   const [done, setDone] = useState<Set<string>>(new Set());
   const [checking, setChecking] = useState(false);
   const inFlight = useRef(false);
@@ -32,7 +33,7 @@ export function useLiveChecklist(scenarioId: string, transcript: Turn[], active:
         const res = await fetch("/api/checklist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scenarioId, transcript: snapshot.slice(-100) }),
+          body: JSON.stringify({ scenarioId, direction, transcript: snapshot.slice(-100) }),
         });
         const body = await res.json().catch(() => ({}));
         if (res.ok && Array.isArray(body.passed)) setDone((prev) => new Set([...prev, ...body.passed]));
@@ -47,16 +48,17 @@ export function useLiveChecklist(scenarioId: string, transcript: Turn[], active:
     }, 1200);
     return () => clearTimeout(timer);
     // `checking` re-runs the effect when a request finishes, so lines that arrived meanwhile get checked too.
-  }, [active, operatorTurns, scenarioId, checking]);
+  }, [active, operatorTurns, scenarioId, direction, checking]);
 
   return { done, checking };
 }
 
-export function LiveChecklist({ done, checking, className = "" }: { done: Set<string>; checking: boolean; className?: string }) {
+export function LiveChecklist({ done, checking, direction, className = "" }: { done: Set<string>; checking: boolean; direction: CallDirection; className?: string }) {
+  const rubric = modelRubric(false, direction);
   return (
     <div className={className}>
       {SKILLS.map((s) => {
-        const items = RUBRIC.filter((r) => r.skill === s.key);
+        const items = rubric.filter((r) => r.skill === s.key);
         const n = items.filter((i) => done.has(i.id)).length;
         return (
           <section key={s.key} className="mt-4 first:mt-0">

@@ -6,6 +6,7 @@ import scenarios from "@/lib/scenarios-public.json";
 import { getHistory, type HistoryEntry } from "@/lib/history";
 import { ArrowUpRight } from "./icons";
 import { useClinicData } from "./clinic-data";
+import { useDirection } from "./direction-switch";
 
 export function years(n: number) {
   const d = n % 10, dd = n % 100;
@@ -34,6 +35,7 @@ export function context(lead: string) {
 // gives it, so the whole workspace fits one screen; each card shows as much description as its height allows (`fit-*` in globals.css).
 export default function PatientGrid({ children }: { children?: React.ReactNode }) {
   const clinicData = useClinicData();
+  const [direction] = useDirection();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   useEffect(() => setHistory(getHistory()), []);
 
@@ -79,7 +81,7 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
               <p className="fit-desc mt-2 line-clamp-3 text-[13px] leading-relaxed text-pretty text-slate-400 lg:mt-1.5 lg:text-[12.5px]">{lead || "\u00a0"}</p>
 
               <span className="mt-auto flex items-center justify-between pt-3 text-sm font-medium text-slate-300 lg:pt-2 low:pt-1 transition-colors duration-500 group-hover:text-accent">
-                Позвонить
+                {direction === "inbound" ? "Принять звонок" : "Позвонить"}
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.06] low:h-6 low:w-6 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </span>

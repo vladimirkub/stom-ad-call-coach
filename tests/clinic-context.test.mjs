@@ -75,7 +75,7 @@ test("fitted patients are used only once ready; until then the shared ones", asy
   assert.match(elena.prompt, /ТВОЯ СИТУАЦИЯ: elena видела рекламу осмотра за 0 ₽/);
   assert.match(elena.prompt, /Лечение кариеса молочных зубов от 6 500 ₽/);
   assert.doesNotMatch(elena.prompt, /91 000/);
-  assert.deepEqual(Object.keys(C.personaVars(ctx, "elena")).sort(), ["concerns", "site_facts", "situation"]);
+  assert.deepEqual(Object.keys(C.personaVars(ctx, "elena")).sort(), ["call_direction", "concerns", "site_facts", "situation"]);
 });
 
 test("a failed fit is reported and keeps the shared patients", async () => {

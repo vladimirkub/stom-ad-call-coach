@@ -99,6 +99,8 @@ export function db(): DatabaseSync {
     if (!clinicCols.some((c) => c.name === "sites")) conn.exec("ALTER TABLE clinics ADD COLUMN sites TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
     if (!clinicCols.some((c) => c.name === "directions")) conn.exec("ALTER TABLE clinics ADD COLUMN directions TEXT NOT NULL DEFAULT '[]'");
+    const trainingCols = conn.prepare("PRAGMA table_info(trainings)").all() as { name: string }[];
+    if (!trainingCols.some((c) => c.name === "direction")) conn.exec("ALTER TABLE trainings ADD COLUMN direction TEXT NOT NULL DEFAULT 'outbound'");
     const legendCols = conn.prepare("PRAGMA table_info(legends)").all() as { name: string }[];
     if (!legendCols.some((c) => c.name === "personas")) {
       conn.exec("ALTER TABLE legends ADD COLUMN personas TEXT NOT NULL DEFAULT '{}'");
