@@ -32,7 +32,7 @@ export function pendingProposal(clinicId: number): Proposal | null {
 
 /** The latest decided proposal: the manager sees whether it was approved, or why not. */
 export function lastDecision(clinicId: number): Proposal | null {
-  return toProposal(db().prepare(`${SELECT} WHERE p.clinic_id = ? AND p.status != 'pending' ORDER BY p.decided_at DESC LIMIT 1`).get(clinicId) as Row | undefined);
+  return toProposal(db().prepare(`${SELECT} WHERE p.clinic_id = ? AND p.status != 'pending' ORDER BY p.decided_at DESC, p.id DESC LIMIT 1`).get(clinicId) as Row | undefined);
 }
 
 /** What the proposal changes against the clinic as it is now. */

@@ -92,7 +92,7 @@ export function getWishes(clinicId: number): string {
   return row.wishes;
 }
 
-const MAX_WISHES = 4000;
+const MAX_WISHES = 100_000;
 export function cleanWishes(raw: unknown): string {
   const wishes = String(raw ?? "").replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   if (wishes.length > MAX_WISHES) throw new Error(`Пожелания слишком длинные: ${wishes.length} символов из ${MAX_WISHES}`);

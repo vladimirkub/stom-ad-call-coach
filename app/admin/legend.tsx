@@ -308,7 +308,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
           className="field min-h-[7rem] resize-y"
           placeholder="Например: «Хочу проверить, как администраторы отрабатывают страх наркоза у детей, рассказывают про опыт врачей с маленькими пациентами и закрывают возражение „подумаем и перезвоним“»"
           value={wishes}
-          maxLength={4000}
+          maxLength={100000}
           onChange={(e) => setWishes(e.target.value)}
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -320,7 +320,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
           >
             Сохранить пожелания
           </button>
-          <span className="text-xs tabular-nums text-slate-600">{wishes.length.toLocaleString("ru-RU")} / 4 000</span>
+          <span className="text-xs tabular-nums text-slate-600">{wishes.length.toLocaleString("ru-RU")} / 100 000</span>
         </div>
       </Panel>
 

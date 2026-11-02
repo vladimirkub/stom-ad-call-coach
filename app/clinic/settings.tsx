@@ -158,9 +158,10 @@ export function ClinicSettings() {
           className="field min-h-[7rem] resize-y"
           placeholder="Например: «Хочу проверить, как администраторы отрабатывают страх наркоза у детей, рассказывают про опыт врачей с маленькими пациентами и закрывают возражение „подумаем и перезвоним“»"
           value={wishes}
-          maxLength={4000}
+          maxLength={100000}
           onChange={(e) => { setWishes(e.target.value); setDirty(true); }}
         />
+        <p className="mt-2 text-xs tabular-nums text-slate-600">{wishes.length.toLocaleString("ru-RU")} / 100 000</p>
       </Panel>
 
       <Panel>
