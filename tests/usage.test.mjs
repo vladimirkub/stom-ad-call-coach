@@ -8,6 +8,7 @@ const auth = await import("../lib/auth.ts");
 const { recordCall, syncUsage, usageReport } = await import("../lib/usage.ts");
 const { recommendPlan, USD_RUB } = await import("../lib/plans.ts");
 const { saveTraining, parseAttempt } = await import("../lib/trainings.ts");
+const { db } = await import("../lib/db.ts");
 
 const DAY = 864e5;
 const NOW = Date.UTC(2026, 9, 30, 12);
@@ -87,4 +88,16 @@ test("the plan covers both seats and minutes; past the largest plan minutes beco
   assert.equal(recommendPlan(4, 10).label, "Клиника", "seats push it up");
   assert.equal(recommendPlan(9, 10).label, "Сеть");
   assert.deepEqual(recommendPlan(12, 1100.5), { key: "network", label: "Сеть", priceRub: 29900 + 101 * 15, extraMinutes: 101 });
+});
+
+test("the clinic's technical admin account costs money but is not a seat or an active administrator", () => {
+  const tech = auth.createTrainee({ clinicId: quiet, firstName: "Клиника", lastName: "Админ" });
+  recordCall({ conversationId: conv(900), userId: tech.id, clinicId: quiet, kind: "patient", scenarioId: "elena", now: NOW - DAY });
+  db().prepare("UPDATE usage SET duration_s = 120, cost_usd = 0.2, status = 'done' WHERE conversation_id = ?").run(conv(900));
+  const q = usageReport(NOW).clinics.find((x) => x.id === quiet);
+  assert.equal(q.minutes30, 2, "its minutes are spent");
+  assert.equal(q.costRub30, Math.round(0.2 * USD_RUB));
+  assert.equal(q.seats, 1, "only Олег is a seat");
+  assert.equal(q.active30, 0);
+  assert.equal(q.users.find((u) => u.id === tech.id).tech, true);
 });

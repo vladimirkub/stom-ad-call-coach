@@ -1,6 +1,7 @@
 // Owner statistics over the training history: all clinics, one clinic, one trainee, one call.
-// Only trainees count (the owner's own test calls are left out). Windows are rolling: last 7 / 30 days.
+// Only trainees count (the owner's own test calls and the clinics' technical "admin" accounts are left out, lib/auth.ts). Windows are rolling: last 7 / 30 days.
 import { db } from "./db.ts";
+import { COUNTED_TRAINEE } from "./auth.ts";
 import { SKILL_KEYS, type SkillKey } from "./rubric.ts";
 import { rubricFor } from "./scoring.ts";
 import { TEMPO } from "./tempo.ts";
@@ -12,7 +13,7 @@ const round1 = (v: number | null | undefined) => (v == null ? null : Math.round(
 const scenarioName = (id: string) => scenarios.find((s) => s.id === id)?.name ?? id;
 const skillAverages = (where: string, ...args: (number | string)[]) => {
   const cols = SKILL_KEYS.map((k) => `AVG(json_extract(t.scores, '$.${k}')) AS ${k}`).join(", ");
-  const row = db().prepare(`SELECT ${cols} FROM trainings t JOIN users u ON u.id = t.user_id WHERE u.role = 'trainee' AND ${where}`).get(...args) as Record<SkillKey, number | null>;
+  const row = db().prepare(`SELECT ${cols} FROM trainings t JOIN users u ON u.id = t.user_id WHERE ${COUNTED_TRAINEE()} AND ${where}`).get(...args) as Record<SkillKey, number | null>;
   return Object.fromEntries(SKILL_KEYS.map((k) => [k, round1(row[k])])) as Record<SkillKey, number | null>;
 };
 
@@ -34,17 +35,17 @@ export function overview(now = Date.now()) {
   const totals = db()
     .prepare(
       `SELECT SUM(t.started_at >= ?) AS d7, COUNT(*) AS d30, COUNT(DISTINCT CASE WHEN t.started_at >= ? THEN t.user_id END) AS active7, AVG(t.total) AS avg30
-       FROM trainings t JOIN users u ON u.id = t.user_id WHERE u.role = 'trainee' AND t.started_at >= ?`,
+       FROM trainings t JOIN users u ON u.id = t.user_id WHERE ${COUNTED_TRAINEE()} AND t.started_at >= ?`,
     )
     .get(now - 7 * DAY, now - 7 * DAY, now - 30 * DAY) as { d7: number | null; d30: number; active7: number; avg30: number | null };
   const clinics = db()
     .prepare(
       `SELECT c.id, c.legal_name AS legalName, c.city,
-         (SELECT COUNT(*) FROM users u WHERE u.clinic_id = c.id AND u.role = 'trainee' AND u.active = 1) AS users,
+         (SELECT COUNT(*) FROM users u WHERE u.clinic_id = c.id AND ${COUNTED_TRAINEE()} AND u.active = 1) AS users,
          COUNT(DISTINCT CASE WHEN t.started_at >= ? THEN t.user_id END) AS active7,
          SUM(t.started_at >= ?) AS trainings7, SUM(t.started_at >= ?) AS trainings30,
          AVG(CASE WHEN t.started_at >= ? THEN t.total END) AS avg30, MAX(t.started_at) AS lastAt
-       FROM clinics c LEFT JOIN trainings t ON t.clinic_id = c.id
+       FROM clinics c LEFT JOIN trainings t ON t.clinic_id = c.id AND t.user_id IN (SELECT u.id FROM users u WHERE ${COUNTED_TRAINEE()})
        GROUP BY c.id ORDER BY lastAt IS NULL, lastAt DESC, c.legal_name`,
     )
     .all(now - 7 * DAY, now - 7 * DAY, now - 30 * DAY, now - 30 * DAY) as {
@@ -71,7 +72,7 @@ export function clinicStats(clinicId: number, now = Date.now()) {
          AVG(CASE WHEN t.mode = 'voice' THEN t.duration_s END) AS voiceAvgS,
          SUM(t.mode = 'voice') AS voiceCalls, SUM(t.mode = 'voice' AND t.duration_s <= ?) AS voiceOnTime
        FROM users u LEFT JOIN trainings t ON t.user_id = u.id
-       WHERE u.clinic_id = ? AND u.role = 'trainee' GROUP BY u.id ORDER BY lastAt IS NULL, lastAt DESC, u.last_name`,
+       WHERE u.clinic_id = ? AND ${COUNTED_TRAINEE()} GROUP BY u.id ORDER BY lastAt IS NULL, lastAt DESC, u.last_name`,
     )
     .all(now - 7 * DAY, now - 14 * DAY, now - 7 * DAY, TEMPO.targetSeconds, clinicId) as {
     id: number; firstName: string; lastName: string; login: string; active: number; count: number; average: number | null; avg7: number | null; avgPrev7: number | null; booked: number | null; lastAt: number | null;
@@ -80,7 +81,7 @@ export function clinicStats(clinicId: number, now = Date.now()) {
 
   // Most frequent misses over the last 30 days: which checklist items the team fails most often.
   const rows = db()
-    .prepare("SELECT t.evaluation FROM trainings t JOIN users u ON u.id = t.user_id WHERE u.role = 'trainee' AND t.clinic_id = ? AND t.started_at >= ?")
+    .prepare(`SELECT t.evaluation FROM trainings t JOIN users u ON u.id = t.user_id WHERE ${COUNTED_TRAINEE()} AND t.clinic_id = ? AND t.started_at >= ?`)
     .all(clinicId, now - 30 * DAY) as { evaluation: string }[];
   const misses = topMisses(rows);
 
@@ -104,7 +105,7 @@ export function userStats(userId: number) {
   const user = db()
     .prepare(
       `SELECT u.id, u.first_name AS firstName, u.last_name AS lastName, u.login, u.active, c.id AS clinicId, c.legal_name AS clinicName
-       FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.id = ? AND u.role = 'trainee'`,
+       FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.id = ? AND ${COUNTED_TRAINEE()}`,
     )
     .get(userId) as { id: number; firstName: string; lastName: string; login: string; active: number; clinicId: number; clinicName: string } | undefined;
   if (!user) return null;

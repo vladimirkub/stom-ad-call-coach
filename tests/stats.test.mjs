@@ -15,6 +15,8 @@ const idle = auth.createClinic({ legalName: "ООО «Тишина»", slug: "ti
 auth.createTrainee({ clinicId: idle, firstName: "Олег", lastName: "Молчанов" });
 const anna = auth.createTrainee({ clinicId: lux, firstName: "Анна", lastName: "Иванова" });
 const maria = auth.createTrainee({ clinicId: lux, firstName: "Мария", lastName: "Петрова" });
+// The clinic's technical account (login admin.stomlux): managers look around, it never counts.
+const tech = auth.createTrainee({ clinicId: lux, firstName: "Клиника", lastName: "Админ" });
 auth.setupOwner(auth.createSetupToken(), "a-long-owner-password", { firstName: "В", lastName: "К" });
 const ownerId = db().prepare("SELECT id FROM users WHERE role = 'owner'").get().id;
 
@@ -37,6 +39,25 @@ call({ userId: anna.id, clinicId: lux, total: 80, at: NOW - 2 * DAY, booked: 1, 
 call({ userId: maria.id, clinicId: lux, total: 60, at: NOW - 1 * DAY, missed: ["offeredSlot"] });
 call({ userId: maria.id, clinicId: lux, total: 20, at: NOW - 40 * DAY, missed: ["introduced"] }); // outside 30 days
 call({ userId: ownerId, clinicId: null, total: 100, at: NOW - DAY }); // the owner's own test call
+call({ userId: tech.id, clinicId: lux, total: 5, at: NOW - DAY, missed: ["introduced", "askedNeed", "offeredSlot"] }); // half-done manager call
+
+test("the clinic's technical admin account is left out of every statistic", () => {
+  assert.equal(tech.login, "admin.stomlux");
+  assert.ok(auth.isTechLogin("admin.stomlux") && auth.isTechLogin("admin2.stomlux"));
+  assert.ok(!auth.isTechLogin("adminova.stomlux") && !auth.isTechLogin("admin"));
+  const o = overview(NOW);
+  assert.equal(o.totals.trainings30, 3);
+  const luxRow = o.clinics.find((c) => c.id === lux);
+  assert.equal(luxRow.users, 2);
+  assert.equal(luxRow.trainings30, 3);
+  const c = clinicStats(lux, NOW);
+  assert.ok(!c.users.some((u) => u.login === tech.login));
+  assert.equal(c.calls30, 3);
+  assert.equal(userStats(tech.id), null);
+  const listed = auth.listClinics().find((x) => x.id === lux);
+  assert.equal(listed.users, 2);
+  assert.equal(auth.listTrainees(lux).find((u) => u.id === tech.id).tech, true);
+});
 
 test("overview counts trainees only, in rolling windows", () => {
   const o = overview(NOW);

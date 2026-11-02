@@ -8,7 +8,7 @@ import { LegendEditor } from "./legend";
 import { UsagePanel } from "./usage";
 
 type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null };
-type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean };
+type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean; tech: boolean };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" }, cache: "no-store" });
@@ -311,6 +311,7 @@ function ClinicUsers({ clinic, onChanged, onStats }: { clinic: Clinic; onChanged
                   <tr key={u.id} className={`border-t border-white/[0.06] ${u.active ? "" : "text-slate-500"}`}>
                     <td className="px-5 py-3">
                       {u.lastName} {u.firstName}
+                      {u.tech && <span className="chip ml-2" title="Учётка для руководителей: в статистику и отчёты не входит, расход считается">техническая</span>}
                       {!u.active && <span className="chip ml-2">отключён</span>}
                     </td>
                     <td className="px-3 py-3 font-mono text-[13px]">{u.login}</td>

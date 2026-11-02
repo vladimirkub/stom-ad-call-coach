@@ -18,6 +18,19 @@ export type SessionUser = {
   clinic: { id: number; legalName: string; slug: string; city: string } | null;
 };
 
+// ---- technical accounts ----
+
+/**
+ * Each clinic has a shared "Админ" account (login admin.<clinic>) for its managers, who log in to look around and rarely
+ * finish a call. It is not an administrator in training: statistics, reports and seats leave it out; usage still counts it.
+ */
+export function isTechLogin(login: string): boolean {
+  return /^admin\d*\./.test(login);
+}
+
+/** SQL for "this user row is a real trainee": a trainee that is not a technical account. `u` is the users alias. */
+export const COUNTED_TRAINEE = (u = "u") => `(${u}.role = 'trainee' AND ${u}.login NOT GLOB 'admin.*' AND ${u}.login NOT GLOB 'admin[0-9]*.*')`;
+
 // ---- generated credentials ----
 
 const TRANSLIT: Record<string, string> = {
@@ -219,7 +232,7 @@ export function listClinics() {
       `SELECT c.id, c.legal_name AS legalName, c.slug, c.city, c.created_at AS createdAt,
               COUNT(u.id) AS users, SUM(u.active) AS activeUsers,
               (SELECT version FROM legends l WHERE l.clinic_id = c.id AND l.status = 'approved') AS legendVersion
-       FROM clinics c LEFT JOIN users u ON u.clinic_id = c.id GROUP BY c.id ORDER BY c.legal_name`,
+       FROM clinics c LEFT JOIN users u ON u.clinic_id = c.id AND ${COUNTED_TRAINEE()} GROUP BY c.id ORDER BY c.legal_name`,
     )
     .all() as { id: number; legalName: string; slug: string; city: string; createdAt: number; users: number; activeUsers: number | null; legendVersion: number | null }[];
 }
@@ -228,5 +241,5 @@ export function listTrainees(clinicId: number) {
   const rows = db()
     .prepare("SELECT id, first_name AS firstName, last_name AS lastName, login, pass_enc, active, created_at AS createdAt FROM users WHERE clinic_id = ? AND role = 'trainee' ORDER BY last_name, first_name")
     .all(clinicId) as { id: number; firstName: string; lastName: string; login: string; pass_enc: string | null; active: number; createdAt: number }[];
-  return rows.map(({ pass_enc, active, ...r }) => ({ ...r, active: !!active, password: pass_enc ? decryptSecret(pass_enc) : null }));
+  return rows.map(({ pass_enc, active, ...r }) => ({ ...r, active: !!active, tech: isTechLogin(r.login), password: pass_enc ? decryptSecret(pass_enc) : null }));
 }

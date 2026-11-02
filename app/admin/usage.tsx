@@ -8,7 +8,7 @@ import { Panel, PanelTitle } from "../ui";
 // point to. During the beta nothing is limited; this is for choosing the plan in each contract.
 
 type Totals = { calls30: number; minutes30: number; text30: number; pending30: number; costRub30: number; minutesAll: number };
-type Person = Totals & { id: number; name: string; login: string; patientMinutes30: number; operatorMinutes30: number; active30: boolean };
+type Person = Totals & { id: number; name: string; login: string; patientMinutes30: number; operatorMinutes30: number; active30: boolean; tech: boolean };
 type Clinic = Totals & {
   id: number; legalName: string; city: string; seats: number; active30: number;
   plan: { key: string; label: string; priceRub: number; extraMinutes: number };
@@ -116,7 +116,7 @@ export function UsagePanel() {
                               {u.name}
                               <span className="block text-xs text-slate-500">{u.login}</span>
                             </td>
-                            <td className="px-3 py-2.5 text-right text-xs text-slate-500">{u.active30 ? "активен" : "не тренировался"}</td>
+                            <td className="px-3 py-2.5 text-right text-xs text-slate-500">{u.tech ? "техническая" : u.active30 ? "активен" : "не тренировался"}</td>
                             <td className="px-3 py-2.5 text-right tabular-nums" title={`Пациенты ${min(u.patientMinutes30)} мин., виртуальный оператор ${min(u.operatorMinutes30)} мин.`}>
                               {min(u.minutes30)}
                             </td>

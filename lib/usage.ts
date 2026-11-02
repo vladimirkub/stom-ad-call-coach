@@ -1,6 +1,7 @@
 // Voice usage per clinic and administrator. The browser reports each ElevenLabs conversation when it connects; the exact
 // length and price come from ElevenLabs afterwards (syncUsage), so a closed tab or a lost "call ended" still counts.
 import { db } from "./db.ts";
+import { COUNTED_TRAINEE, isTechLogin } from "./auth.ts";
 import { recommendPlan, USD_RUB } from "./plans.ts";
 
 export type CallKind = "patient" | "operator";
@@ -119,6 +120,8 @@ export function usageReport(now = Date.now()) {
       costRub30: rub(costUsd),
       minutesAll: minutes(r.secondsAll),
       active30: r.calls30 + r.evaluated30 > 0,
+      // The clinic's technical account: its spend counts, but it is not a seat or an active administrator.
+      tech: isTechLogin(r.login),
     };
   };
   const sum = (people: ReturnType<typeof person>[]) => ({
@@ -132,9 +135,9 @@ export function usageReport(now = Date.now()) {
 
   const clinics = (db().prepare("SELECT id, legal_name AS legalName, city FROM clinics ORDER BY legal_name").all() as { id: number; legalName: string; city: string }[]).map((c) => {
     const users = rows.filter((r) => r.clinicId === c.id && r.role === "trainee").map(person);
-    const seats = (db().prepare("SELECT COUNT(*) AS n FROM users WHERE clinic_id = ? AND role = 'trainee' AND active = 1").get(c.id) as { n: number }).n;
+    const seats = (db().prepare(`SELECT COUNT(*) AS n FROM users u WHERE u.clinic_id = ? AND ${COUNTED_TRAINEE()} AND u.active = 1`).get(c.id) as { n: number }).n;
     const totals = sum(users);
-    return { ...c, seats, active30: users.filter((u) => u.active30).length, ...totals, plan: recommendPlan(seats, totals.minutes30), users };
+    return { ...c, seats, active30: users.filter((u) => u.active30 && !u.tech).length, ...totals, plan: recommendPlan(seats, totals.minutes30), users };
   });
   const owner = rows.filter((r) => r.role === "owner").map(person);
   const clinicTotals = sum(clinics.flatMap((c) => c.users));
