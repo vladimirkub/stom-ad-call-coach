@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { voiceAlert } from "@/lib/usage";
 import { createClinic, listClinics } from "@/lib/auth";
 import { requireOwner } from "@/lib/session";
 import { clinicsWithProposals } from "@/lib/proposals";
@@ -7,7 +8,8 @@ export async function GET() {
   const gate = await requireOwner();
   if ("denied" in gate) return gate.denied;
   const waiting = clinicsWithProposals();
-  return NextResponse.json({ clinics: listClinics().map((c) => ({ ...c, proposal: waiting.has(c.id) })) });
+  // voiceAlert: ElevenLabs has run out of credits and voice calls fail (lib/usage.ts).
+  return NextResponse.json({ clinics: listClinics().map((c) => ({ ...c, proposal: waiting.has(c.id) })), voiceAlert: voiceAlert() });
 }
 
 export async function POST(req: Request) {

@@ -101,3 +101,20 @@ test("the clinic's technical admin account costs money but is not a seat or an a
   assert.equal(q.active30, 0);
   assert.equal(q.users.find((u) => u.id === tech.id).tech, true);
 });
+
+test("a call refused for lack of credits is explained to its caller and warns the owner until a call succeeds", async () => {
+  const { voiceProblem, voiceAlert } = await import("../lib/usage.ts");
+  const quota = { status: "failed", metadata: { call_duration_secs: 0, error: { reason: "[quota_exceeded] You've run out of credits." } } };
+  const later = Date.now() + 365 * DAY; // after every call recorded above
+  recordCall({ conversationId: conv(90), userId: anna.id, clinicId: lux, kind: "patient", scenarioId: "elena", now: later });
+  assert.equal(await voiceProblem(conv(90), maria.id, async () => quota, 0), null, "only the caller may ask about a call");
+  assert.equal(voiceAlert(), null);
+  assert.equal(await voiceProblem(conv(90), anna.id, async () => quota, 0), "quota");
+  assert.equal(voiceAlert()?.failed, 1);
+  assert.equal(voiceAlert()?.since, later);
+  recordCall({ conversationId: conv(91), userId: anna.id, clinicId: lux, kind: "patient", scenarioId: "elena", now: later + 1000 });
+  assert.equal(await voiceProblem(conv(91), anna.id, async () => ({ status: "failed", metadata: { error: { reason: "network" } } }), 0), "failed");
+  recordCall({ conversationId: conv(92), userId: anna.id, clinicId: lux, kind: "patient", scenarioId: "elena", now: later + 2000 });
+  db().prepare("UPDATE usage SET status = 'done' WHERE conversation_id = ?").run(conv(92));
+  assert.equal(voiceAlert(), null, "a successful call clears the warning");
+});

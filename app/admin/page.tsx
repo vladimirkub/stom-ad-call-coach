@@ -28,6 +28,7 @@ export default function Admin() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [voiceAlert, setVoiceAlert] = useState<{ since: number; failed: number } | null>(null);
   const go = (v: StatsView) => {
     setNav(v);
     setTab("stats");
@@ -36,8 +37,9 @@ export default function Admin() {
 
   const loadClinics = useCallback(async () => {
     try {
-      const { clinics } = await api<{ clinics: Clinic[] }>("/api/admin/clinics");
+      const { clinics, voiceAlert } = await api<{ clinics: Clinic[]; voiceAlert: { since: number; failed: number } | null }>("/api/admin/clinics");
       setClinics(clinics);
+      setVoiceAlert(voiceAlert);
       setSelected((s) => s ?? clinics[0]?.id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -66,6 +68,16 @@ export default function Admin() {
             ? "Сколько минут голоса тратит каждая клиника и каждый администратор, во что это обходится и какой тариф ставить в договор."
             : "Заведите клинику, добавьте её администраторов и отправьте каждому логин и пароль."}
       </PageHeader>
+      {voiceAlert && (
+        <div role="alert" className="mb-5 rounded-2xl bg-rose-500/10 px-5 py-4 text-sm text-pretty text-rose-100 ring-1 ring-rose-400/30">
+          <p className="font-semibold">Голосовые звонки не работают: в ElevenLabs закончились кредиты</p>
+          <p className="mt-1 text-rose-200/80">
+            С {new Date(voiceAlert.since).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} не начался ни один голосовой звонок
+            (неудачных попыток: {voiceAlert.failed}). Администраторы видят, что голос временно недоступен, и могут тренироваться текстом. Пополните
+            кредиты или повысьте тариф в кабинете ElevenLabs: предупреждение исчезнет после первого удачного звонка.
+          </p>
+        </div>
+      )}
       <div role="tablist" aria-label="Разделы админки" className="mb-5 flex w-fit gap-1 rounded-full bg-white/[0.03] p-1 ring-1 ring-white/[0.07]">
         {(
           [

@@ -5,7 +5,10 @@ import { COUNTED_TRAINEE, isTechLogin } from "./auth.ts";
 import { recommendPlan, USD_RUB } from "./plans.ts";
 
 export type CallKind = "patient" | "operator";
-type Conversation = { status?: string; metadata?: { call_duration_secs?: number; charging?: { platform_price?: number; llm_price?: number } } };
+type Conversation = {
+  status?: string;
+  metadata?: { call_duration_secs?: number; charging?: { platform_price?: number; llm_price?: number }; error?: { reason?: string } | null };
+};
 export type FetchConversation = (id: string) => Promise<Conversation | null>;
 
 const DAY = 864e5;
@@ -45,7 +48,7 @@ export async function syncUsage(fetchOne: FetchConversation = fetchConversation,
        WHERE (status IS NULL OR status NOT IN ('done', 'failed', 'missing')) AND started_at < ? ORDER BY started_at DESC LIMIT ?`,
     )
     .all(now - 20_000, limit) as { id: string; startedAt: number }[];
-  const update = db().prepare("UPDATE usage SET duration_s = ?, cost_usd = ?, status = ?, synced_at = ? WHERE conversation_id = ?");
+  const update = db().prepare("UPDATE usage SET duration_s = ?, cost_usd = ?, status = ?, synced_at = ?, error = ? WHERE conversation_id = ?");
   let failed = 0;
   for (let i = 0; i < rows.length; i += 5) {
     await Promise.all(
@@ -53,12 +56,12 @@ export async function syncUsage(fetchOne: FetchConversation = fetchConversation,
         try {
           const c = await fetchOne(r.id);
           if (!c) {
-            if (now - r.startedAt > DAY) update.run(0, 0, "missing", now, r.id);
+            if (now - r.startedAt > DAY) update.run(0, 0, "missing", now, null, r.id);
             return;
           }
           const charging = c.metadata?.charging;
           const cost = charging ? (charging.platform_price ?? 0) + (charging.llm_price ?? 0) : null;
-          update.run(c.metadata?.call_duration_secs ?? null, cost, c.status ?? null, now, r.id);
+          update.run(c.metadata?.call_duration_secs ?? null, cost, c.status ?? null, now, c.metadata?.error?.reason?.slice(0, 300) ?? null, r.id);
         } catch {
           failed++;
         }
@@ -66,6 +69,40 @@ export async function syncUsage(fetchOne: FetchConversation = fetchConversation,
     );
   }
   return { checked: rows.length, failed };
+}
+
+/** ElevenLabs refuses new calls when the account's credits run out: "[quota_exceeded] You've run out of credits…". */
+const QUOTA = "quota_exceeded";
+export type VoiceProblem = "quota" | "failed" | null;
+
+/**
+ * Why this user's voice call broke off at the start, asked from ElevenLabs right away (it may take a moment to mark the
+ * call failed). Saved like syncUsage would, so the owner's warning does not wait for the next sync.
+ */
+export async function voiceProblem(conversationId: unknown, userId: number, fetchOne: FetchConversation = fetchConversation, waitMs = 1500): Promise<VoiceProblem> {
+  if (typeof conversationId !== "string" || !CONVERSATION_ID.test(conversationId)) return null;
+  const own = db().prepare("SELECT 1 FROM usage WHERE conversation_id = ? AND user_id = ?").get(conversationId, userId);
+  if (!own) return null;
+  let c: Conversation | null = null;
+  for (let i = 0; i < 3; i++) {
+    c = await fetchOne(conversationId).catch(() => null);
+    if (c?.status === "failed" || c?.metadata?.error) break;
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+  const reason = c?.metadata?.error?.reason ?? null;
+  if (c?.status) {
+    db().prepare("UPDATE usage SET status = ?, error = ?, synced_at = ? WHERE conversation_id = ?").run(c.status, reason?.slice(0, 300) ?? null, Date.now(), conversationId);
+  }
+  return reason?.includes(QUOTA) ? "quota" : c?.status === "failed" ? "failed" : null;
+}
+
+/** Voice is down for lack of credits: since when and how many calls failed, until a call succeeds again. */
+export function voiceAlert(): { since: number; failed: number } | null {
+  const lastOk = (db().prepare("SELECT MAX(started_at) AS t FROM usage WHERE status = 'done'").get() as { t: number | null }).t ?? 0;
+  const row = db()
+    .prepare("SELECT MIN(started_at) AS since, COUNT(*) AS failed FROM usage WHERE error LIKE ? AND started_at > ?")
+    .get(`%${QUOTA}%`, lastOk) as { since: number | null; failed: number };
+  return row.since ? { since: row.since, failed: row.failed } : null;
 }
 
 type Row = {

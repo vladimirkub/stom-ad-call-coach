@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS usage (
   duration_s INTEGER,
   cost_usd REAL,
   status TEXT,
-  synced_at INTEGER
+  synced_at INTEGER,
+  error TEXT
 );
 CREATE TABLE IF NOT EXISTS proposals (
   id INTEGER PRIMARY KEY,
@@ -116,6 +117,8 @@ export function db(): DatabaseSync {
     if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
     if (!clinicCols.some((c) => c.name === "directions")) conn.exec("ALTER TABLE clinics ADD COLUMN directions TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE clinics ADD COLUMN wishes TEXT NOT NULL DEFAULT ''");
+    const usageCols = conn.prepare("PRAGMA table_info(usage)").all() as { name: string }[];
+    if (!usageCols.some((c) => c.name === "error")) conn.exec("ALTER TABLE usage ADD COLUMN error TEXT");
     const proposalCols = conn.prepare("PRAGMA table_info(proposals)").all() as { name: string }[];
     if (!proposalCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE proposals ADD COLUMN wishes TEXT");
     // The clinic manager role (Nov 2026): SQLite cannot widen a CHECK, so an older users table is rebuilt once, and each

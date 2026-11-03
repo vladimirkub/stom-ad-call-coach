@@ -27,6 +27,8 @@ export default function Challenge({ id }: { id: string }) {
   );
 }
 
+const VOICE_DOWN = "Голосовые звонки сейчас недоступны: у тренажёра временно закончился лимит голоса. Мы уже знаем об этом и чиним. Пока можно потренироваться в текстовом режиме.";
+
 function Call({ id }: { id: string }) {
   const scenario = scenarios.find((s) => s.id === id)!;
   const clinicData = useClinicData();
@@ -56,10 +58,31 @@ function Call({ id }: { id: string }) {
   const [endedAt, setEndedAt] = useState<number | null>(null);
 
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
+  // The voice call in progress and whether anyone has spoken yet: a call that dies silent is asked about (voiceDown).
+  const voiceCall = useRef<{ id: string; messages: number } | null>(null);
+  // ElevenLabs refused the call (its credits ran out): the administrator sees why instead of a lost connection.
+  const [voiceDown, setVoiceDown] = useState(false);
+
+  async function explainSilentDrop(conversationId: string) {
+    const res = await fetch("/api/voice-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId }) }).catch(() => null);
+    const { problem } = ((await res?.json().catch(() => null)) ?? {}) as { problem?: string | null };
+    if (problem === "quota") {
+      setVoiceDown(true);
+      setHungUp(false);
+      setError(VOICE_DOWN);
+    } else if (problem === "failed") {
+      setHungUp(false);
+      setError("Голосовой звонок не удалось начать. Попробуйте позвонить ещё раз или потренируйтесь в текстовом режиме.");
+    }
+  }
 
   const conversation = useConversation({
-    onConnect: ({ conversationId }) => reportCall(conversationId, "patient", id),
+    onConnect: ({ conversationId }) => {
+      voiceCall.current = { id: conversationId, messages: 0 };
+      reportCall(conversationId, "patient", id);
+    },
     onMessage: ({ role, message }) => {
+      if (voiceCall.current) voiceCall.current.messages++;
       // Expressive voices may carry audio tags like "[sighs]": they shape the voice, not the transcript.
       const text = (role === "agent" ? message?.replace(/\[[^\]\n]{1,30}\]\s*/g, "") : message)?.trim();
       if (text) add({ role, text });
@@ -70,6 +93,9 @@ function Call({ id }: { id: string }) {
       if (details.reason === "error") setError(`Голосовое соединение потеряно: ${details.message}`);
       // The patient can end the call herself (end_call tool) when the operator loses her trust.
       if (details.reason === "agent") setHungUp(true);
+      const call = voiceCall.current;
+      voiceCall.current = null;
+      if (call && (details.reason === "error" || call.messages === 0)) void explainSilentDrop(call.id);
     },
   });
 
@@ -79,6 +105,7 @@ function Call({ id }: { id: string }) {
 
   async function startVoice(dir: CallDirection = direction) {
     setError(null);
+    setVoiceDown(false);
     setBusy(true);
     try {
       try {
@@ -115,6 +142,7 @@ function Call({ id }: { id: string }) {
 
   function startText() {
     setError(null);
+    setVoiceDown(false);
     // Inbound: the administrator picks up and writes first.
     setTranscript(inbound ? [] : [{ role: "agent", text: scenario.firstMessage }]);
     beginAttempt();
@@ -361,7 +389,9 @@ function Call({ id }: { id: string }) {
                   {callOver
                     ? finishing
                       ? "Звонок завершён, оцениваем…"
-                      : hungUp
+                      : voiceDown
+                        ? "Голосовой звонок не начался."
+                        : hungUp
                         ? "Пациент завершил звонок. Получите оценку разговора."
                         : "Звонок завершён. Получите оценку разговора."
                     : mode === "voice"
@@ -381,8 +411,8 @@ function Call({ id }: { id: string }) {
                 {attempt.current && (mode === "voice" || mode === "text") && (
                   <CallTimer mode={mode} startedAt={attempt.current.startedAt} endedAt={endedAt} replies={transcript.filter((t) => t.role === "user").length} />
                 )}
-                <button onClick={finish} disabled={finishing} className="btn btn-light shrink-0">
-                  {finishing ? "Оцениваем… 30–60 с" : callOver ? "Получить оценку" : "Завершить звонок"}
+                <button onClick={voiceDown ? startText : finish} disabled={finishing} className="btn btn-light shrink-0">
+                  {voiceDown ? "Тренироваться текстом" : finishing ? "Оцениваем… 30–60 с" : callOver ? "Получить оценку" : "Завершить звонок"}
                 </button>
               </div>
               {!callOver && (
