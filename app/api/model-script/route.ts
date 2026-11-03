@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
   const list = (v: unknown) =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 5).map((x) => `- ${x.slice(0, 400)}`).join("\n") : "";
-  const scoreLines = SKILLS.map((s) => `- ${s.label}: ${scores.data[s.key]}/10`).join("\n");
+  const scoreLines = SKILLS.map((s) => `- ${s.label}: ${scores.data[s.key] ?? "не оценивалось"}${scores.data[s.key] === null ? "" : "/10"}`).join("\n");
   const text = transcript.data.map((t) => `${t.role === "user" ? "ОПЕРАТОР" : "ПАЦИЕНТ"}: ${t.text}`).join("\n");
   const prompt = `Пациент: ${scenario.name}, ${scenario.age} лет. ${scenario.lead}
 Скрытая причина сомнений: ${scenario.hiddenObjection}

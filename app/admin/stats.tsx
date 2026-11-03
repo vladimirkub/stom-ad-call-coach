@@ -41,7 +41,7 @@ type Training = {
   transcript: { role: "user" | "agent"; text: string }[];
   live: string[];
   evaluation: {
-    total: number; summary: string; appointmentBooked: boolean; checklist: { id: string; label: string; done: boolean; evidence?: string }[]; improvements?: string[]; strengths?: string[];
+    total: number; summary: string; appointmentBooked: boolean; checklist: { id: string; label: string; done: boolean; evidence?: string; cutOff?: boolean }[]; improvements?: string[]; strengths?: string[];
     wishes?: { topic: string; done: boolean; note: string }[];
   };
 };
@@ -393,8 +393,9 @@ function TrainingView({ id, go }: { id: string; go: (v: StatsView) => void }) {
   const { data, error } = useStats<Training>(`view=training&id=${encodeURIComponent(id)}`);
   if (!data) return <><Back onClick={() => go({ view: "overview" })}>Сводка</Back><Loading error={error} /></>;
   const ev = data.evaluation;
-  const missed = ev.checklist.filter((c) => !c.done);
+  const missed = ev.checklist.filter((c) => !c.done && !c.cutOff);
   const passed = ev.checklist.filter((c) => c.done);
+  const cutOff = ev.checklist.filter((c) => c.cutOff);
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -427,6 +428,17 @@ function TrainingView({ id, go }: { id: string; go: (v: StatsView) => void }) {
             <ul className="mt-3 flex flex-col gap-1.5 text-sm text-slate-400">
               {passed.map((c) => <li key={c.id}>{c.label}</li>)}
             </ul>
+            {cutOff.length > 0 && (
+              <>
+                <div className="mt-5">
+                  <PanelTitle>Не успели · {cutOff.length}</PanelTitle>
+                  <p className="mt-1 text-xs text-pretty text-slate-500">Пациент согласился на запись и сразу положил трубку. Эти пункты не входят в балл.</p>
+                </div>
+                <ul className="mt-3 flex flex-col gap-1.5 text-sm text-slate-500">
+                  {cutOff.map((c) => <li key={c.id}>{c.label}</li>)}
+                </ul>
+              </>
+            )}
           </Panel>
           {!!ev.wishes?.length && (
             <Panel>

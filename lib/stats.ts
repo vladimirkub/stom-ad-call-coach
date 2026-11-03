@@ -21,8 +21,8 @@ function topMisses(rows: { evaluation: string }[], limit = 6) {
   const rubric = RUBRIC;
   const missed = new Map<string, number>();
   for (const r of rows) {
-    const checklist = (JSON.parse(r.evaluation) as { checklist?: { id: string; done: boolean }[] }).checklist ?? [];
-    for (const item of checklist) if (!item.done) missed.set(item.id, (missed.get(item.id) ?? 0) + 1);
+    const checklist = (JSON.parse(r.evaluation) as { checklist?: { id: string; done: boolean; cutOff?: boolean }[] }).checklist ?? [];
+    for (const item of checklist) if (!item.done && !item.cutOff) missed.set(item.id, (missed.get(item.id) ?? 0) + 1);
   }
   return [...missed.entries()]
     .map(([id, n]) => ({ id, label: rubric.find((r) => r.id === id)?.label ?? id, count: n, share: Math.round((100 * n) / rows.length) }))

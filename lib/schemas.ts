@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ChecklistItem, Scores } from "./scoring";
 
-const skill = z.number().int().min(0).max(10);
+const skill = z.number().int().min(0).max(10).nullable();
 
 export const EvaluationSchema = z.object({
   // Compact: ids of passed criteria + short notes for missed ones (keeps the response small and fast).
@@ -12,6 +12,8 @@ export const EvaluationSchema = z.object({
     .max(8)
     .default([]),
   appointmentBooked: z.boolean(),
+  // The patient's turn where they agreed to the booking; 0 when they did not.
+  agreedTurn: z.number().int().min(0).default(0),
   objectionUncovered: z.boolean(),
   objectionEvidence: z.string().default(""),
   unsupportedClaims: z.array(z.string()).max(5).default([]),

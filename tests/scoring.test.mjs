@@ -61,3 +61,13 @@ test("parseTranscript maps roles and joins continuation lines", () => {
     { role: "agent", text: "Да Мусор: игнор" },
   ]);
 });
+
+test("cut-off items are not counted; a skill with nothing left gives its weight to the rest", () => {
+  const items = RUBRIC.filter((r) => !r.only || r.only === "outbound").map((r) => ({ ...r, done: r.skill !== "showUp" }));
+  const cut = items.map((r) => (r.skill === "showUp" ? { ...r, cutOff: true } : r));
+  assert.equal(skillScores(items).showUp, 0);
+  assert.equal(skillScores(cut).showUp, null);
+  assert.equal(totalScore(skillScores(cut)), 100);
+  // 8*.25 + 6*.3 + 4*.25 = 4.8 of 0.8 -> 60
+  assert.equal(totalScore({ discovery: 8, objectionHandling: 6, booking: 4, showUp: null }), 60);
+});

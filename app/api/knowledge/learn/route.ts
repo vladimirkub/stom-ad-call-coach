@@ -11,7 +11,7 @@ const ResultSchema = z.object({
   strengths: z.array(z.string()).default([]),
   improvements: z.array(z.string()).default([]),
   moments: z.array(z.object({ turn: z.number().int(), kind: z.enum(["good", "miss"]), comment: z.string() })).default([]),
-  checklist: z.array(z.object({ label: z.string(), done: z.boolean() })).default([]),
+  checklist: z.array(z.object({ label: z.string(), done: z.boolean(), cutOff: z.boolean().optional() })).default([]),
 });
 
 const LearningSchema = z.object({
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   const prompt = `Итог звонка: ${r.total}/100.
 Удачные и неудачные моменты:
 ${r.moments.map((m) => `- реплика ${m.turn}, ${m.kind === "good" ? "удачно" : "упущение"}: ${m.comment}`).join("\n") || "- нет"}
-Невыполненные критерии: ${r.checklist.filter((c) => !c.done).map((c) => c.label).join("; ") || "нет"}
+Невыполненные критерии: ${r.checklist.filter((c) => !c.done && !c.cutOff).map((c) => c.label).join("; ") || "нет"}
 Сильные стороны: ${r.strengths.join("; ") || "нет"}
 Что улучшить: ${r.improvements.join("; ") || "нет"}
 Утверждения, противоречащие фактам: ${r.unsupportedClaims.join("; ") || "нет"}

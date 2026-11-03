@@ -166,26 +166,28 @@ export default function Results() {
           <PanelTitle icon={<Chart />}>Навыки по чек-листу</PanelTitle>
           {SKILLS.map((s) => {
             const items = result.checklist.filter((c) => c.skill === s.key);
+            const counted = items.filter((i) => !i.cutOff);
+            const score = result.scores[s.key];
             return (
               <div key={s.key}>
                 <div className="flex justify-between gap-4 text-sm">
                   <span className="font-medium text-slate-100">{s.label} <span className="font-normal text-slate-500">· {Math.round(s.weight * 100)}%</span></span>
-                  <span className="tabular-nums text-slate-300">{result.scores[s.key]}/10</span>
+                  <span className="tabular-nums text-slate-300">{score === null ? "не оценивалось" : `${score}/10`}</span>
                 </div>
                 <div className="mt-2 h-1.5 rounded-full bg-white/[0.06]">
-                  <div className="h-1.5 rounded-full bg-accent" style={{ width: `${result.scores[s.key] * 10}%` }} />
+                  <div className="h-1.5 rounded-full bg-accent" style={{ width: `${(score ?? 0) * 10}%` }} />
                 </div>
                 <details className="group mt-1.5 text-sm">
                   <summary className="cursor-pointer list-none text-xs text-slate-500 transition hover:text-slate-300">
-                    Критерии: {items.filter((i) => i.done).length} из {items.length} <span className="group-open:hidden">· показать</span><span className="hidden group-open:inline">· скрыть</span>
+                    Критерии: {counted.filter((i) => i.done).length} из {counted.length}{counted.length < items.length && ` · не успели: ${items.length - counted.length}`} <span className="group-open:hidden">· показать</span><span className="hidden group-open:inline">· скрыть</span>
                   </summary>
                   <ul className="mt-2.5 space-y-2">
                     {items.map((c) => (
                       <li key={c.id} className="flex gap-2.5 text-slate-300">
-                        <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded ${c.done ? "bg-accent text-ink-950" : "ring-1 ring-inset ring-white/20"}`}>
-                          {c.done && <Check className="h-3 w-3" />}
+                        <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded ${c.done ? "bg-accent text-ink-950" : c.cutOff ? "text-[10px] text-slate-500 ring-1 ring-inset ring-dashed ring-white/15" : "ring-1 ring-inset ring-white/20"}`}>
+                          {c.done ? <Check className="h-3 w-3" /> : c.cutOff ? "–" : null}
                         </span>
-                        <span>
+                        <span className={c.cutOff ? "text-slate-500" : undefined}>
                           {c.label}
                           {c.evidence && <span className="block text-xs text-slate-500">{c.evidence}</span>}
                         </span>

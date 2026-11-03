@@ -9,23 +9,31 @@ export const SKILLS = [
 ] as const;
 
 export type { SkillKey };
-export type Scores = Record<SkillKey, number>;
-export type ChecklistItem = RubricItem & { done: boolean; evidence?: string };
+/** null: nothing in this skill could be judged (every item was cut off, see ChecklistItem.cutOff). */
+export type Scores = Record<SkillKey, number | null>;
+/** cutOff: the patient agreed to a time and hung up before the operator could answer, so this item is not counted. */
+export type ChecklistItem = RubricItem & { done: boolean; evidence?: string; cutOff?: boolean };
 
-/** Skill score 0-10 = share of passed checklist items. Deterministic, never model-computed. */
-export function skillScores(items: Pick<ChecklistItem, "skill" | "done">[]): Scores {
+/** Closing items the operator can only do after the patient's agreement: not counted when the patient hangs up at once. */
+export const CUT_OFF_IDS = ["clearNextStep", "gotContact", "repeatedDetails", "route", "askedObstacles", "gotCommitment", "reminderAndReschedule"];
+
+/** Skill score 0-10 = share of passed checklist items, cut-off items left out. Deterministic, never model-computed. */
+export function skillScores(items: Pick<ChecklistItem, "skill" | "done" | "cutOff">[]): Scores {
   const out = {} as Scores;
   for (const key of SKILL_KEYS) {
-    const group = items.filter((i) => i.skill === key);
-    out[key] = group.length ? Math.round((10 * group.filter((i) => i.done).length) / group.length) : 0;
+    const group = items.filter((i) => i.skill === key && !i.cutOff);
+    out[key] = group.length ? Math.round((10 * group.filter((i) => i.done).length) / group.length) : null;
   }
   return out;
 }
 
-/** Weighted total on a 0-100 scale from four 0-10 skill scores. */
+/** Weighted total on a 0-100 scale from four 0-10 skill scores; a skill that could not be judged gives its weight to the rest. */
 export function totalScore(scores: Scores): number {
-  const sum = SKILLS.reduce((acc, s) => acc + (scores[s.key] / 10) * s.weight, 0);
-  return Math.round(sum * 100);
+  const judged = SKILLS.filter((s) => scores[s.key] !== null);
+  const weight = judged.reduce((acc, s) => acc + s.weight, 0);
+  if (!weight) return 0;
+  const sum = judged.reduce((acc, s) => acc + ((scores[s.key] ?? 0) / 10) * s.weight, 0);
+  return Math.round((sum / weight) * 100);
 }
 
 /** Rubric applicable to this evaluation (real calls have no known hidden objection) and call direction. */

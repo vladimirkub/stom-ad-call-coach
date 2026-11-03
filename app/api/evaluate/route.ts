@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
 import { EvaluationSchema, TranscriptSchema, type EvaluationResult } from "@/lib/schemas";
 import { gemmaJson } from "@/lib/gemma";
-import { rubricFor, skillScores, totalScore, type ChecklistItem } from "@/lib/scoring";
+import { CUT_OFF_IDS, rubricFor, skillScores, totalScore, type ChecklistItem } from "@/lib/scoring";
 import { evaluationPrompt, evaluationSystem } from "@/lib/evaluation";
-import { onTime } from "@/lib/tempo";
+import { TEMPO_NOTES, onTime } from "@/lib/tempo";
 import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext, currentUser } from "@/lib/session";
 import { parseAttempt, saveTraining } from "@/lib/trainings";
@@ -30,9 +30,11 @@ export async function POST(req: Request) {
   // Real calls are judged on the checklist alone; the clinic's wishes are for its trainings.
   const wishes = real ? "" : ctx.wishes;
   const prompt = evaluationPrompt({ scenario, memo: ctx.memo, transcript, wishes });
+  const attempt = scenario ? parseAttempt(body?.attempt) : null;
+  const hungUp = attempt?.endedBy === "patient";
 
   try {
-    const ev = await gemmaJson({ system: evaluationSystem(real, direction, !!wishes.trim()), prompt, schema: EvaluationSchema, tier: "smart" });
+    const ev = await gemmaJson({ system: evaluationSystem(real, direction, !!wishes.trim(), hungUp), prompt, schema: EvaluationSchema, tier: "smart" });
 
     const passed = new Set(ev.passed);
     const notes = new Map(ev.missed.map((m) => [m.id, m.note]));
@@ -49,9 +51,19 @@ export async function POST(req: Request) {
     if (ev.unsupportedClaims.length > 0) set("noFalsePromises", false);
     if (!real) set("uncoveredHidden", ev.objectionUncovered);
     if (!ev.appointmentBooked) set("gotAgreement", false);
-    // Tempo: booked within the target (lib/tempo.ts): 3 minutes in voice, 10 operator replies in text.
-    const attempt = scenario ? parseAttempt(body?.attempt) : null;
+    // The patient agreed and hung up before the operator could answer: the closing items they had no turn for are not counted.
+    // Not when the time ran out (the wrap-up note told the patient to say goodbye): then the operator ran out of time.
     const replies = transcript.filter((t) => t.role === "user").length;
+    const wrapUp = TEMPO_NOTES.find((n) => n.stage === "wrapUp")!;
+    const timedOut = !!attempt && (attempt.mode === "voice" ? (attempt.durationS ?? 0) >= wrapUp.voiceSeconds : replies >= wrapUp.textReplies);
+    const lastOperatorTurn = transcript.findLastIndex((t) => t.role === "user") + 1;
+    const agreed = ev.agreedTurn;
+    if (hungUp && !timedOut && ev.appointmentBooked && agreed > lastOperatorTurn && transcript[agreed - 1]?.role === "agent") {
+      for (const c of checklist) {
+        if (CUT_OFF_IDS.includes(c.id) && !c.done) Object.assign(c, { cutOff: true, evidence: "пациент положил трубку сразу после согласия" });
+      }
+    }
+    // Tempo: booked within the target (lib/tempo.ts): 3 minutes in voice, 10 operator replies in text.
     const tempoOk = !!attempt && ev.appointmentBooked && onTime(attempt.mode, attempt.durationS ?? Infinity, replies);
     set("onTime", tempoOk);
     if (attempt && !tempoOk) {

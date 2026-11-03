@@ -32,3 +32,10 @@ test("the clinic's wishes reach the judge only when there are some", () => {
   assert.match(evaluationPrompt({ scenario: null, memo: [], transcript, wishes: "Проверить наркоз" }), /Пожелания клиники к тренировке[\s\S]*Проверить наркоз/);
   assert.doesNotMatch(evaluationPrompt({ scenario: null, memo: [], transcript }), /Пожелания/);
 });
+
+test("the judge counts a named day and time as a booking and knows when the patient hung up", () => {
+  assert.match(evaluationSystem(false), /даже если оператор уже не успел это подтвердить/);
+  assert.match(evaluationSystem(false), /"agreedTurn":0/);
+  assert.doesNotMatch(evaluationSystem(false), /ЗВОНОК ЗАКОНЧИЛ ПАЦИЕНТ/);
+  assert.match(evaluationSystem(false, "outbound", false, true), /ЗВОНОК ЗАКОНЧИЛ ПАЦИЕНТ/);
+});
