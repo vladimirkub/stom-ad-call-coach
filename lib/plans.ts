@@ -18,3 +18,6 @@ export function recommendPlan(admins: number, minutes: number) {
   const extra = Math.max(0, Math.ceil(minutes - plan.minutes));
   return { key: plan.key as PlanKey, label: plan.label, priceRub: plan.priceRub + extra * OVERAGE_RUB_PER_MIN, extraMinutes: extra };
 }
+
+/** ElevenLabs credits one minute of a voice call costs, measured over our calls (Creator plan, 3 Nov 2026: 130 819 for 280 min). */
+export const CREDITS_PER_MINUTE = 467;

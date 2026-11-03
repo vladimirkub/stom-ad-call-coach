@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { OVERAGE_RUB_PER_MIN, PLANS } from "@/lib/plans";
+import { CREDITS_PER_MINUTE, OVERAGE_RUB_PER_MIN, PLANS } from "@/lib/plans";
 import { Panel, PanelTitle } from "../ui";
 
 // Owner usage: voice minutes, calls and our cost per clinic and administrator, and the plan each clinic's last 30 days
@@ -14,7 +14,8 @@ type Clinic = Totals & {
   plan: { key: string; label: string; priceRub: number; extraMinutes: number };
   users: Person[];
 };
-type Report = { usdRub: number; totals: Totals; owner: Totals; clinics: Clinic[]; syncFailed: number };
+type Balance = { tier: string; used: number; limit: number; left: number; minutesLeft: number; resetAt: number | null; perDay: number; daysLeft: number | null; low: boolean };
+type Report = { usdRub: number; totals: Totals; owner: Totals; clinics: Clinic[]; syncFailed: number; balance: Balance | null };
 
 const rub = (v: number) => `${v.toLocaleString("ru-RU")} ₽`;
 const min = (v: number) => v.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
@@ -26,6 +27,39 @@ function Figure({ label, value, hint }: { label: string; value: React.ReactNode;
       <dd className="mt-1 text-3xl font-semibold tracking-tight tabular-nums text-slate-50">{value}</dd>
       {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
     </div>
+  );
+}
+
+const date = (t: number) => new Date(t).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+
+/** What is left of the ElevenLabs credits, in minutes of voice, and for how long at the pace of the last 7 days. */
+function VoiceBalancePanel({ balance }: { balance: Balance | null }) {
+  if (!balance) {
+    return (
+      <Panel>
+        <PanelTitle>Голос в ElevenLabs</PanelTitle>
+        <p className="mt-1 text-xs text-pretty text-slate-500">Не удалось узнать остаток кредитов: ElevenLabs не ответил или у ключа нет права User → Read.</p>
+      </Panel>
+    );
+  }
+  const share = balance.limit ? Math.min(100, (100 * balance.used) / balance.limit) : 100;
+  return (
+    <Panel>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <PanelTitle>Голос в ElevenLabs</PanelTitle>
+        <span className="text-xs text-slate-500">тариф {balance.tier || "—"}{balance.resetAt && ` · месячные кредиты обновятся ${date(balance.resetAt)}`}</span>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-5 sm:grid-cols-4">
+        <Figure label="Осталось минут голоса" value={balance.minutesLeft.toLocaleString("ru-RU")} hint={`≈ ${balance.left.toLocaleString("ru-RU")} кредитов`} />
+        <Figure label="Хватит при нынешнем темпе" value={balance.daysLeft === null ? "—" : `${balance.daysLeft} дн.`} hint={balance.daysLeft === null ? "за 7 дней звонков не было" : `≈ ${Math.round(balance.perDay / CREDITS_PER_MINUTE)} мин. в день за 7 дней`} />
+        <Figure label="Израсходовано" value={`${Math.round(share)}%`} hint={`${balance.used.toLocaleString("ru-RU")} из ${balance.limit.toLocaleString("ru-RU")}`} />
+        <Figure label="Минута звонка" value={`≈ ${CREDITS_PER_MINUTE}`} hint="кредитов, по нашим звонкам" />
+      </dl>
+      <div className="mt-4 h-1.5 rounded-full bg-white/[0.06]">
+        <div className={`h-1.5 rounded-full ${balance.low ? "bg-amber-300" : "bg-accent"}`} style={{ width: `${share}%` }} />
+      </div>
+      {balance.low && <p className="mt-3 text-xs text-amber-200">Кредитов осталось мало: пополните их в кабинете ElevenLabs заранее, чтобы звонки клиник не оборвались.</p>}
+    </Panel>
   );
 }
 
@@ -44,9 +78,10 @@ export function UsagePanel() {
   }, []);
 
   if (!data) return error ? <p role="alert" className="alert alert-error">{error}</p> : <p className="text-sm text-slate-500">Загружаем расход из ElevenLabs…</p>;
-  const { totals, owner, clinics } = data;
+  const { totals, owner, clinics, balance } = data;
   return (
     <div className="flex flex-col gap-5">
+      <VoiceBalancePanel balance={balance} />
       <Panel>
         <dl className="grid grid-cols-2 gap-5 sm:grid-cols-4">
           <Figure label="Минут голоса за 30 дней" value={min(totals.minutes30)} hint={`всего с начала: ${min(totals.minutesAll)}`} />

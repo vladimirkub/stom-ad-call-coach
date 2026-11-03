@@ -29,6 +29,7 @@ export default function Admin() {
   const [selected, setSelected] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [voiceAlert, setVoiceAlert] = useState<{ since: number; failed: number } | null>(null);
+  const [voiceLow, setVoiceLow] = useState<{ minutesLeft: number; daysLeft: number | null } | null>(null);
   const go = (v: StatsView) => {
     setNav(v);
     setTab("stats");
@@ -37,9 +38,12 @@ export default function Admin() {
 
   const loadClinics = useCallback(async () => {
     try {
-      const { clinics, voiceAlert } = await api<{ clinics: Clinic[]; voiceAlert: { since: number; failed: number } | null }>("/api/admin/clinics");
+      const { clinics, voiceAlert, voiceLow } = await api<{
+        clinics: Clinic[]; voiceAlert: { since: number; failed: number } | null; voiceLow: { minutesLeft: number; daysLeft: number | null } | null;
+      }>("/api/admin/clinics");
       setClinics(clinics);
       setVoiceAlert(voiceAlert);
+      setVoiceLow(voiceLow);
       setSelected((s) => s ?? clinics[0]?.id ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -76,6 +80,15 @@ export default function Admin() {
             (неудачных попыток: {voiceAlert.failed}). Администраторы видят, что голос временно недоступен, и могут тренироваться текстом. Пополните
             кредиты или повысьте тариф в кабинете ElevenLabs: предупреждение исчезнет после первого удачного звонка.
           </p>
+        </div>
+      )}
+      {!voiceAlert && voiceLow && (
+        <div role="alert" className="mb-5 rounded-2xl bg-amber-400/10 px-5 py-4 text-sm text-pretty text-amber-100 ring-1 ring-amber-300/30">
+          <p className="font-semibold">
+            Кредиты ElevenLabs заканчиваются: осталось около {voiceLow.minutesLeft.toLocaleString("ru-RU")} мин. голоса
+            {voiceLow.daysLeft !== null && `, при нынешнем темпе на ${voiceLow.daysLeft} дн.`}
+          </p>
+          <p className="mt-1 text-amber-200/80">Пополните кредиты в кабинете ElevenLabs, чтобы звонки клиник не оборвались. Подробности во вкладке «Расход».</p>
         </div>
       )}
       <div role="tablist" aria-label="Разделы админки" className="mb-5 flex w-fit gap-1 rounded-full bg-white/[0.03] p-1 ring-1 ring-white/[0.07]">
