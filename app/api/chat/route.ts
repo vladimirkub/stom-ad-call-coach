@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const limited = rateLimit(req, "chat", 40);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
-  const scenario = getScenario(body?.scenarioId, await currentClinicContext(), parseDirection(body?.direction));
+  const scenario = getScenario(body?.scenarioId, await currentClinicContext(), parseDirection(body?.direction), body?.variant);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   // The same time notes as in voice, by the operator's replies so far (lib/tempo.ts).

@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const direction = parseDirection(body?.direction);
   if (real && !FEATURES.realCalls) return NextResponse.json({ error: OFF_MESSAGE }, { status: 403 });
   const ctx = await currentClinicContext();
-  const scenario = real ? null : getScenario(body?.scenarioId, ctx, direction);
+  const scenario = real ? null : getScenario(body?.scenarioId, ctx, direction, body?.variant);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if ((!real && !scenario) || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   const transcript = parsed.data;
@@ -29,7 +29,9 @@ export async function POST(req: Request) {
 
   // Real calls are judged on the checklist alone; the clinic's wishes are for its trainings.
   const wishes = real ? "" : ctx.wishes;
-  const prompt = evaluationPrompt({ scenario, memo: ctx.memo, transcript, wishes });
+  // Variant calls: after how many operator replies the administrator opened the patient's record (null: never).
+  const recordOpenedAfter = Number.isInteger(body?.recordOpenedAfter) ? (body.recordOpenedAfter as number) : null;
+  const prompt = evaluationPrompt({ scenario, memo: ctx.memo, transcript, wishes, recordOpenedAfter });
   const attempt = scenario ? parseAttempt(body?.attempt) : null;
   const hungUp = attempt?.endedBy === "patient";
 

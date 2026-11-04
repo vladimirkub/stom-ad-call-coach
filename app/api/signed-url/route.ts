@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
-import { scenarioIds } from "@/lib/scenarios";
+import { scenarioIds, scenarioVars } from "@/lib/scenarios";
 import { agentIdFor, conversationTokenFor } from "@/lib/agents";
-import { personaVars } from "@/lib/clinic-context";
 import { currentClinicContext } from "@/lib/session";
 import { parseDirection } from "@/lib/direction";
 import pub from "@/lib/scenarios-public.json";
@@ -30,7 +29,7 @@ export async function GET(req: Request) {
     // The agent prompt keeps {{situation}}, {{concerns}}, {{site_facts}} and {{call_direction}} open; the call fills them
     // for this clinic and direction. On an inbound call the first line is empty: the patient waits for the administrator.
     const dynamicVariables = {
-      ...personaVars(await currentClinicContext(), scenario, direction),
+      ...scenarioVars(await currentClinicContext(), scenario, direction, q.get("variant")),
       first_line: direction === "inbound" ? "" : (pub.find((s) => s.id === scenario)?.firstMessage ?? ""),
     };
     return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId), dynamicVariables });

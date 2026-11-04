@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const ctx = await currentClinicContext();
   const direction = parseDirection(body?.direction);
-  const scenario = getScenario(body?.scenarioId, ctx, direction);
+  const scenario = getScenario(body?.scenarioId, ctx, direction, body?.variant);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
 

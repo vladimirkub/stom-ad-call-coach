@@ -16,6 +16,7 @@ import { context, initials, quote, years } from "../../patient-grid";
 import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
 import { INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
+import { PatientRecord, type TreatmentRecord } from "../../patient-record";
 
 type Mode = "idle" | "voice" | "text";
 
@@ -58,6 +59,16 @@ function Call({ id }: { id: string }) {
   const [endedAt, setEndedAt] = useState<number | null>(null);
 
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
+  // Patients with call variants (a warranty claim): one is picked for this visit to the page; the administrator can look
+  // the patient up in the clinic's base, and when they did is sent with the evaluation.
+  const variants = ("variants" in scenario ? scenario.variants : undefined) as { id: string; record: TreatmentRecord }[] | undefined;
+  const [variant, setVariant] = useState<string | null>(null);
+  useEffect(() => {
+    if (variants?.length) setVariant(variants[Math.floor(Math.random() * variants.length)].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const record = variants?.find((v) => v.id === variant)?.record;
+  const [recordOpenedAfter, setRecordOpenedAfter] = useState<number | null>(null);
   // The voice call in progress and whether anyone has spoken yet: a call that dies silent is asked about (voiceDown).
   const voiceCall = useRef<{ id: string; messages: number } | null>(null);
   // ElevenLabs refused the call (its credits ran out): the administrator sees why instead of a lost connection.
@@ -114,7 +125,7 @@ function Call({ id }: { id: string }) {
       } catch {
         throw new Error("Нет доступа к микрофону. Разрешите его в настройках браузера или используйте текстовый режим.");
       }
-      const res = await fetch(`/api/signed-url?scenario=${id}&direction=${dir}`);
+      const res = await fetch(`/api/signed-url?scenario=${id}&direction=${dir}${variant ? `&variant=${variant}` : ""}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
       await startSessionFast(conversation, body);
@@ -166,7 +177,7 @@ function Call({ id }: { id: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenarioId: id, direction, transcript: next }),
+        body: JSON.stringify({ scenarioId: id, direction, variant, transcript: next }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Пациент не смог ответить");
@@ -192,6 +203,8 @@ function Call({ id }: { id: string }) {
         body: JSON.stringify({
           scenarioId: id,
           direction,
+          variant,
+          recordOpenedAfter,
           transcript,
           attempt: attempt.current && {
             ...attempt.current,
@@ -321,6 +334,12 @@ function Call({ id }: { id: string }) {
           )}
         </Panel>
       </div>
+
+      {record && (
+        <div className="mt-3">
+          <PatientRecord record={record} open={recordOpenedAfter !== null} onOpen={() => setRecordOpenedAfter(transcript.filter((t) => t.role === "user").length)} />
+        </div>
+      )}
 
       <div className="mt-3 grid flex-1 gap-5 lg:mt-5 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,17rem)] xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)_minmax(0,21rem)]">
         {/* Desktop: the memo stays open and pinned beside the dialog. Phone: it folds above the dialog. */}

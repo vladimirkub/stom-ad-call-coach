@@ -4,7 +4,24 @@ import type { Turn } from "./schemas.ts";
 import type { CallDirection } from "./direction.ts";
 
 /** condition: a fact of the clinic's day the operator was told (e.g. no free slots today), see lib/scenarios-public.json. */
-type ScenarioContext = { name: string; age: number; lead: string; hiddenObjection: string; showUpRisk: string; condition?: string; judgeNote?: string };
+type TreatmentRecord = { patient: string; visits: { date: string; work: string; tooth: string; warranty: string }[]; rules: string };
+type ScenarioContext = {
+  name: string; age: number; lead: string; hiddenObjection: string; showUpRisk: string; condition?: string; judgeNote?: string;
+  variant?: { id: string; judge: string; record?: TreatmentRecord } | null;
+};
+
+/** The treatment record the administrator could open, and whether they did, for a variant call. */
+function recordText(v: NonNullable<ScenarioContext["variant"]>, openedAfter: number | null) {
+  const visits = (v.record?.visits ?? []).map((x) => `- ${x.date}: ${x.work}; ${x.tooth}; гарантия: ${x.warranty}`).join("\n");
+  const opened = openedAfter === null ? "Оператор карту в базе НЕ открывал." : openedAfter === 0 ? "Оператор открыл карту в базе до своей первой реплики." : `Оператор открыл карту в базе после своей реплики номер ${openedAfter} (считая только реплики оператора).`;
+  return `
+${v.judge}
+Карта пациента в базе клиники, которую оператор мог открыть на экране:
+${v.record?.patient ?? ""}
+${visits}
+${v.record?.rules ?? ""}
+${opened} Сверял ли он жалобу с картой, оценивай по тому, что он говорил пациенту.`;
+}
 
 /** Who called whom, as the judge reads it. */
 const CALL = {
@@ -35,13 +52,13 @@ ${wishes ? `ПОЖЕЛАНИЯ КЛИНИКИ. В запросе есть пож
 }
 
 /** The call itself: the patient's secret context (none for a real call), the clinic's site facts and the numbered transcript. */
-export function evaluationPrompt({ scenario, memo, transcript, wishes = "" }: { scenario: ScenarioContext | null; memo: string[]; transcript: Turn[]; wishes?: string }) {
+export function evaluationPrompt({ scenario, memo, transcript, wishes = "", recordOpenedAfter = null }: { scenario: ScenarioContext | null; memo: string[]; transcript: Turn[]; wishes?: string; recordOpenedAfter?: number | null }) {
   const text = transcript.map((t, i) => `[${i + 1}] ${t.role === "user" ? "ОПЕРАТОР" : "ПАЦИЕНТ"}: ${t.text}`).join("\n");
   const context = scenario
     ? `Пациент: ${scenario.name}, ${scenario.age} лет. ${scenario.lead}
 Скрытая причина сомнений (известна тебе, но не оператору): ${scenario.hiddenObjection}
 Риск неявки (известен тебе, но не оператору): ${scenario.showUpRisk}${scenario.condition ? `
-УСЛОВИЕ ТРЕНИРОВКИ (оператор его знал): ${scenario.condition} Оценивай с учётом условия: не снижай оператору за то, что он не сделал запрещённое условием. Обещание, которое противоречит условию («приходите, как-нибудь втиснем», «сделаем, как вы хотите» вместо назначения врача), — недостоверное обещание: noFalsePromises не засчитывай и внеси его в unsupportedClaims. Запись на другое конкретное время засчитывай как запись.${scenario.judgeNote ? ` ${scenario.judgeNote}` : ""}` : ""}`
+УСЛОВИЕ ТРЕНИРОВКИ (оператор его знал): ${scenario.condition} Оценивай с учётом условия: не снижай оператору за то, что он не сделал запрещённое условием. Обещание, которое противоречит условию («приходите, как-нибудь втиснем», «сделаем, как вы хотите» вместо назначения врача), — недостоверное обещание: noFalsePromises не засчитывай и внеси его в unsupportedClaims. Запись на другое конкретное время засчитывай как запись.${scenario.judgeNote ? ` ${scenario.judgeNote}` : ""}` : ""}${scenario.variant ? recordText(scenario.variant, recordOpenedAfter) : ""}`
     : "Это запись реального звонка. Скрытая причина сомнений заранее неизвестна.";
   return `${context}
 

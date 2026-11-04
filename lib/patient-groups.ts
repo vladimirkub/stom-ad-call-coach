@@ -6,6 +6,7 @@ export const PATIENT_GROUPS = [
   { key: "time", label: "Время", hint: "некогда, срочно, к сроку" },
   { key: "family", label: "Семья", hint: "решают не одни" },
   { key: "trust", label: "Недоверие", hint: "боятся, что обманут" },
+  { key: "claim", label: "Претензии", hint: "недовольны прошлым лечением" },
 ] as const;
 export type PatientGroup = (typeof PATIENT_GROUPS)[number]["key"];
 
