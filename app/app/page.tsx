@@ -12,29 +12,29 @@ const TOOLS = [
   { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone, on: FEATURES.realCalls },
   { href: "/calculator", title: "Калькулятор потерь", text: "Сколько выручки теряется на записи и неявках.", Icon: Calculator, on: FEATURES.calculator },
 ];
-// The patients' grid has 5 x 3 cells on desktop: switched-off tools only fill the cells the patients leave free.
-const GRID_CELLS = 15;
-const SHOWN_TOOLS = [...TOOLS.filter((t) => t.on), ...TOOLS.filter((t) => !t.on)].slice(0, Math.max(TOOLS.filter((t) => t.on).length, GRID_CELLS - scenarios.length));
+// The patients' grid has 5 columns on desktop: switched-off tools only fill the cells the patients leave free in the last row.
+const FREE_CELLS = (5 - (scenarios.length % 5)) % 5;
+const SHOWN_TOOLS = [...TOOLS.filter((t) => t.on), ...TOOLS.filter((t) => !t.on)].slice(0, Math.max(TOOLS.filter((t) => t.on).length, FREE_CELLS));
 
 /** A switched-off section's card: greyed out, not a link, «Скоро» instead of the action. */
 function Soon() {
   return <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-slate-500">Скоро</span>;
 }
 
-// Workspace: everything fits one screen on desktop (nav + headline + bento that fills the height). Below `lg` it stacks and scrolls.
+// Workspace: nav, headline and the patients' grid; the page scrolls when there are more patients than fit the screen.
 // The page grid is the patients' 5 columns, with the same gap, so edges line up: the agency banner spans the headline row
 // over the last 2 columns; the headline keeps to the first 3.
 export default function Workspace() {
   return (
-    <main className="mx-auto flex w-full max-w-[1440px] min-[1800px]:max-w-[1680px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:gap-4 lg:h-[max(560px,calc(100dvh-34px))] low:gap-3 lg:flex-none lg:overflow-hidden lg:px-6">
+    <main className="mx-auto flex w-full max-w-[1440px] min-[1800px]:max-w-[1680px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:gap-4 low:gap-3 lg:px-6">
       <RememberHome home="/app" />
       <nav className="rise flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <Brand />
         <PatientStats />
       </nav>
 
-      <div className="grid min-h-0 flex-1 gap-x-3 gap-y-4 low:gap-y-3 lg:grid-cols-[repeat(5,minmax(0,1fr))] lg:grid-rows-[auto_minmax(0,1fr)]">
-        <section aria-labelledby="trainer" className="flex min-h-0 flex-col gap-4 lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
+      <div className="grid gap-x-3 gap-y-4 low:gap-y-3 lg:grid-cols-[repeat(5,minmax(0,1fr))] lg:grid-rows-[auto_auto]">
+        <section aria-labelledby="trainer" className="flex flex-col gap-4 lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
           <header className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-2" style={{ animationDelay: "60ms" }}>
             <div className="max-w-[60ch] lg:max-w-[calc(60%-15px)]">
               <DirectionHeader />

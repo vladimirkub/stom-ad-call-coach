@@ -94,9 +94,8 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
   const [tab] = useGroupTab();
   const shown = tab === "all" ? scenarios : scenarios.filter((s) => s.group === tab);
 
-  // Desktop: rows are a third of the grid's height, so cards keep their size; more than 15 patients scroll inside.
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:auto-rows-[calc((100%-1.5rem)/3)] lg:overflow-y-auto">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {shown.map((s, i) => {
         const lead = clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "";
         const tries = history.filter((h) => h.scenarioId === s.id);

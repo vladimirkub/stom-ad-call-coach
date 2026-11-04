@@ -26,8 +26,7 @@ export default function DirectionHeader() {
       <h1 id="trainer" className="mt-1.5 text-3xl font-semibold leading-[1.05] tracking-[-0.03em] text-balance lg:text-[min(2.25rem,2.4vw)] short:text-[min(1.75rem,2.4vw)] low:mt-1">
         {t.title}
       </h1>
-      {/* Laptop screens give its two lines to the patient cards, under the group tabs. */}
-      <p className="mt-2 text-sm text-pretty text-slate-400 short:hidden">{t.lead}</p>
+      <p className="mt-2 text-sm text-pretty text-slate-400 short:mt-1 short:text-[13px] low:text-xs">{t.lead}</p>
     </>
   );
 }
