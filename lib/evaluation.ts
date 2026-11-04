@@ -58,7 +58,7 @@ export function evaluationPrompt({ scenario, memo, transcript, wishes = "", reco
     ? `Пациент: ${scenario.name}, ${scenario.age} лет. ${scenario.lead}
 Скрытая причина сомнений (известна тебе, но не оператору): ${scenario.hiddenObjection}
 Риск неявки (известен тебе, но не оператору): ${scenario.showUpRisk}${scenario.condition ? `
-УСЛОВИЕ ТРЕНИРОВКИ (оператор его знал): ${scenario.condition} Оценивай с учётом условия: не снижай оператору за то, что он не сделал запрещённое условием. Обещание, которое противоречит условию («приходите, как-нибудь втиснем», «сделаем, как вы хотите» вместо назначения врача), — недостоверное обещание: noFalsePromises не засчитывай и внеси его в unsupportedClaims. Запись на другое конкретное время засчитывай как запись.${scenario.judgeNote ? ` ${scenario.judgeNote}` : ""}` : ""}${scenario.variant ? recordText(scenario.variant, recordOpenedAfter) : ""}`
+УСЛОВИЕ ТРЕНИРОВКИ (оператор его знал): ${scenario.condition} Оценивай с учётом условия: не снижай оператору за то, что он не сделал запрещённое условием. Обещание, которое противоречит условию («приходите, как-нибудь втиснем», «сделаем, как вы хотите» вместо назначения врача), — недостоверное обещание: noFalsePromises не засчитывай и внеси его в unsupportedClaims. Запись на другое конкретное время засчитывай как запись.${scenario.judgeNote ? ` ${scenario.judgeNote}` : ""}` : scenario.judgeNote ? `\n${scenario.judgeNote}` : ""}${scenario.variant ? recordText(scenario.variant, recordOpenedAfter) : ""}`
     : "Это запись реального звонка. Скрытая причина сомнений заранее неизвестна.";
   return `${context}
 

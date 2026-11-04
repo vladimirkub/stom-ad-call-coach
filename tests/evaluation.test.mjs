@@ -45,3 +45,8 @@ test("a patient's condition of the day reaches the judge", () => {
   assert.match(evaluationPrompt({ scenario, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] }), /УСЛОВИЕ ТРЕНИРОВКИ \(оператор его знал\): На сегодня свободных окон нет\./);
   assert.doesNotMatch(evaluationPrompt({ scenario: { ...scenario, condition: undefined }, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] }), /УСЛОВИЕ ТРЕНИРОВКИ/);
 });
+
+test("a patient's judge note reaches the judge even without a condition of the day", () => {
+  const scenario = { name: "Денис", age: 38, lead: "-", hiddenObjection: "-", showUpRisk: "-", judgeNote: "ОСОБЕННОСТЬ ЗВОНКА: пациент ошибся клиникой." };
+  assert.match(evaluationPrompt({ scenario, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] }), /ОСОБЕННОСТЬ ЗВОНКА: пациент ошибся клиникой\./);
+});

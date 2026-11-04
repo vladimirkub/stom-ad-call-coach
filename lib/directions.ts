@@ -33,9 +33,10 @@ export const PREFERENCES: Record<string, DirectionKey[]> = {
 /**
  * Patients whose whole story is one treatment question, so another direction would make no sense: they get no direction
  * and keep their own problem, fitted to the clinic's prices and facts. Tamara argues a crown after root canal treatment;
- * Karina wants composite veneers rather than ceramic ones; Viktor claims a warranty for earlier work.
+ * Karina wants composite veneers rather than ceramic ones; Viktor claims a warranty for earlier work;
+ * Denis called the wrong clinic.
  */
-export const OWN_STORY = ["tamara", "karina", "viktor"];
+export const OWN_STORY = ["tamara", "karina", "viktor", "denis"];
 
 export const directionLabel = (key: string) => DIRECTIONS.find((d) => d.key === key)?.label ?? key;
 
