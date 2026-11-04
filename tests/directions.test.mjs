@@ -63,17 +63,18 @@ test("the fit gives each patient the direction from the plan", async () => {
     return { lead: id, situation: id, concerns: "- ?", hiddenObjection: "-", showUpRisk: "-", direction };
   });
   for (let i = 0; i < 200 && personaFitState(clinicId).status === "pending"; i++) await new Promise((r) => setTimeout(r, 10));
-  assert.deepEqual(seen, D.assignDirections(["single_implant", "ortho"]));
+  // Patients with their own story (D.OWN_STORY) get no direction.
+  assert.deepEqual(seen, { ...D.assignDirections(["single_implant", "ortho"]), ...Object.fromEntries(D.OWN_STORY.map((id) => [id, undefined])) });
   assert.equal(personaFitState(clinicId).personas.dmitry.direction, "ortho");
 });
 
 test("every patient in the scenarios has direction preferences and a full persona", async () => {
   const pub = (await import("../lib/scenarios-public.json", { with: { type: "json" } })).default;
   const priv = (await import("../lib/scenarios-private.json", { with: { type: "json" } })).default;
-  assert.deepEqual(pub.map((s) => s.id).sort(), [...PATIENTS].sort());
+  assert.deepEqual(pub.map((s) => s.id).sort(), [...PATIENTS, ...D.OWN_STORY].sort());
   assert.deepEqual(Object.keys(D.PREFERENCES).sort(), [...PATIENTS].sort());
-  for (const id of PATIENTS) {
-    assert.deepEqual([...D.PREFERENCES[id]].sort(), [...KEYS].sort(), id);
+  for (const id of [...PATIENTS, ...D.OWN_STORY]) {
+    if (PATIENTS.includes(id)) assert.deepEqual([...D.PREFERENCES[id]].sort(), [...KEYS].sort(), id);
     for (const k of ["prompt", "situation", "concerns", "hiddenObjection", "showUpRisk"]) assert.ok(priv[id][k]?.length > 20, `${id}.${k}`);
     for (const v of ["{{situation}}", "{{concerns}}", "{{site_facts}}", "{{BEHAVIOR}}"]) assert.ok(priv[id].prompt.includes(v), `${id}: ${v}`);
   }

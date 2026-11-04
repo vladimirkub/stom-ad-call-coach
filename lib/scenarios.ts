@@ -5,7 +5,7 @@ import { patientPrompt } from "./patient-behavior.ts";
 import { clinicContext, personaVars, type ClinicContext } from "./clinic-context.ts";
 import type { CallDirection } from "./direction.ts";
 
-type Private = { voiceId: string; prompt: string };
+type Private = { voiceId: string; prompt: string; judgeNote?: string };
 
 export const scenarioIds = pub.map((s) => s.id);
 
@@ -21,6 +21,8 @@ export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null
     lead: fit.lead,
     hiddenObjection: fit.hiddenObjection,
     showUpRisk: fit.showUpRisk,
+    // How the judge should score this patient's condition of the day; kept off the trainee's pages.
+    judgeNote: secret.judgeNote,
     prompt: patientPrompt(secret.prompt, personaVars(ctx, open.id, direction)),
   };
 }
