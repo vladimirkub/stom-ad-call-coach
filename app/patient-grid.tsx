@@ -7,6 +7,59 @@ import { getHistory, type HistoryEntry } from "@/lib/history";
 import { ArrowUpRight } from "./icons";
 import { useClinicData } from "./clinic-data";
 import { useDirection } from "./direction-switch";
+import { PATIENT_GROUPS, parseGroupTab, type GroupTab } from "@/lib/patient-groups";
+
+const GROUP_KEY = "coach:group";
+
+/** The patients' tab picked last, remembered in this browser; "all" until read on the client. The tabs in the header and
+ * the grid below follow the same choice. */
+function useGroupTab(): [GroupTab, (t: GroupTab) => void] {
+  const [tab, set] = useState<GroupTab>("all");
+  useEffect(() => {
+    try {
+      set(parseGroupTab(localStorage.getItem(GROUP_KEY)));
+    } catch {}
+    const follow = (e: Event) => set(parseGroupTab((e as CustomEvent).detail));
+    window.addEventListener(GROUP_KEY, follow);
+    return () => window.removeEventListener(GROUP_KEY, follow);
+  }, []);
+  const choose = (t: GroupTab) => {
+    try {
+      localStorage.setItem(GROUP_KEY, t);
+    } catch {}
+    window.dispatchEvent(new CustomEvent(GROUP_KEY, { detail: t }));
+  };
+  return [tab, choose];
+}
+
+/** Tabs by the kind of objection: everyone, or one group, with how many patients each holds. */
+export function GroupTabs() {
+  const [value, onChange] = useGroupTab();
+  const tabs = [
+    { key: "all" as GroupTab, label: "Все", hint: "все пациенты", count: scenarios.length },
+    ...PATIENT_GROUPS.map((g) => ({ key: g.key as GroupTab, label: g.label, hint: g.hint, count: scenarios.filter((s) => s.group === g.key).length })),
+  ];
+  return (
+    <div role="tablist" aria-label="Пациенты по типу возражения" className="-mx-1 flex w-0 min-w-[calc(100%+0.5rem)] gap-1 overflow-x-auto px-1 pb-0.5">
+      {tabs.map((t) => {
+        const on = t.key === value;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            title={t.hint}
+            onClick={() => onChange(t.key)}
+            className={`shrink-0 rounded-full px-3.5 py-1 text-xs font-semibold whitespace-nowrap transition duration-300 ease-[var(--ease-spring)] active:scale-[0.98] ${on ? "bg-accent text-ink-950" : "bg-white/[0.04] text-slate-300 ring-1 ring-inset ring-white/[0.08] hover:bg-white/[0.07]"}`}
+          >
+            {t.label} <span className={`tabular-nums font-medium ${on ? "text-ink-950/60" : "text-slate-500"}`}>{t.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function years(n: number) {
   const d = n % 10, dd = n % 100;
@@ -38,10 +91,13 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
   const [direction] = useDirection();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   useEffect(() => setHistory(getHistory()), []);
+  const [tab] = useGroupTab();
+  const shown = tab === "all" ? scenarios : scenarios.filter((s) => s.group === tab);
 
+  // Desktop: rows are a third of the grid's height, so cards keep their size; more than 15 patients scroll inside.
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[repeat(3,minmax(0,1fr))]">
-      {scenarios.map((s, i) => {
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:auto-rows-[calc((100%-1.5rem)/3)] lg:overflow-y-auto">
+      {shown.map((s, i) => {
         const lead = clinicData ? context(clinicData.leads[s.id] ?? s.lead) : "";
         const tries = history.filter((h) => h.scenarioId === s.id);
         const last = tries[tries.length - 1];
@@ -90,7 +146,7 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
           </Link>
         );
       })}
-      {children}
+      {tab === "all" && children}
     </div>
   );
 }

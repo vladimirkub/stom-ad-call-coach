@@ -1,9 +1,8 @@
 import Link from "next/link";
-import PatientGrid, { PatientStats } from "../patient-grid";
+import PatientGrid, { GroupTabs, PatientStats } from "../patient-grid";
 import AgencyBanner from "../agency-banner";
-import KbBadge from "../kb-badge";
 import { Brand } from "../ui";
-import { ArrowUpRight, Calculator, Phone, Spark } from "../icons";
+import { ArrowUpRight, Calculator, Phone } from "../icons";
 import { FEATURES } from "@/lib/features";
 import scenarios from "@/lib/scenarios-public.json";
 import { RememberHome } from "../home-link";
@@ -13,11 +12,9 @@ const TOOLS = [
   { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone, on: FEATURES.realCalls },
   { href: "/calculator", title: "Калькулятор потерь", text: "Сколько выручки теряется на записи и неявках.", Icon: Calculator, on: FEATURES.calculator },
 ];
-// The patients' grid has 4 x 3 cells on desktop: switched-off tools only fill the cells the patients leave free.
-const GRID_CELLS = 12;
+// The patients' grid has 5 x 3 cells on desktop: switched-off tools only fill the cells the patients leave free.
+const GRID_CELLS = 15;
 const SHOWN_TOOLS = [...TOOLS.filter((t) => t.on), ...TOOLS.filter((t) => !t.on)].slice(0, Math.max(TOOLS.filter((t) => t.on).length, GRID_CELLS - scenarios.length));
-const OPERATOR_ON = FEATURES.operator;
-const KNOWLEDGE_ON = FEATURES.knowledge;
 
 /** A switched-off section's card: greyed out, not a link, «Скоро» instead of the action. */
 function Soon() {
@@ -25,9 +22,8 @@ function Soon() {
 }
 
 // Workspace: everything fits one screen on desktop (nav + headline + bento that fills the height). Below `lg` it stacks and scrolls.
-// The page grid is the patients' 4 columns plus the operator column, with the same gap, so edges line up: the agency
-// banner spans the headline row from the 4th patient column to the operator column's right edge; the headline keeps to
-// the first 3 columns.
+// The page grid is the patients' 5 columns, with the same gap, so edges line up: the agency banner spans the headline row
+// over the last 2 columns; the headline keeps to the first 3.
 export default function Workspace() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] min-[1800px]:max-w-[1680px] flex-1 flex-col gap-5 px-4 pt-4 pb-3 lg:gap-4 lg:h-[max(560px,calc(100dvh-34px))] low:gap-3 lg:flex-none lg:overflow-hidden lg:px-6">
@@ -37,11 +33,14 @@ export default function Workspace() {
         <PatientStats />
       </nav>
 
-      <div className="grid min-h-0 flex-1 gap-x-3 gap-y-4 low:gap-y-3 lg:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.35fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
-        <section aria-labelledby="trainer" className="flex min-h-0 flex-col gap-4 lg:col-span-4 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
+      <div className="grid min-h-0 flex-1 gap-x-3 gap-y-4 low:gap-y-3 lg:grid-cols-[repeat(5,minmax(0,1fr))] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <section aria-labelledby="trainer" className="flex min-h-0 flex-col gap-4 lg:col-span-5 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
           <header className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-2" style={{ animationDelay: "60ms" }}>
-            <div className="max-w-[60ch] lg:max-w-[calc(75%-15px)]">
+            <div className="max-w-[60ch] lg:max-w-[calc(60%-15px)]">
               <DirectionHeader />
+              <div className="mt-2.5 low:mt-2">
+                <GroupTabs />
+              </div>
             </div>
           </header>
           <PatientGrid>
@@ -87,125 +86,7 @@ export default function Workspace() {
         </section>
 
         <AgencyBanner className="z-10 lg:col-start-4 lg:col-end-6 lg:row-start-1 lg:self-stretch" />
-
-        <section aria-label="Виртуальный оператор и база знаний" className="flex min-h-0 flex-col gap-4 lg:col-span-1 lg:col-start-5 lg:row-span-2 lg:row-start-1 lg:grid lg:grid-rows-subgrid">
-          <div className="grid min-h-0 flex-1 gap-3 lg:row-start-2 lg:grid-rows-[1fr_auto] low:gap-2.5">
-            <OperatorCard />
-
-            <KnowledgeCard />
-          </div>
-        </section>
       </div>
     </main>
-  );
-}
-
-/** Mode 2 card: the AI operator calls and the trainee plays the patient. Greyed out while the mode is switched off. */
-function OperatorCard() {
-  const on = OPERATOR_ON;
-  const body = (
-    <div className={`bezel-core relative flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-hidden p-5 lg:p-4 short:gap-3 low:p-3.5 ${on ? "" : "opacity-55"}`}>
-      {on && <div aria-hidden className="pointer-events-none absolute -top-24 -right-16 h-64 w-64 rounded-full bg-accent/[0.12] blur-3xl" />}
-      <div className="relative flex items-center gap-3">
-        <span
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full short:h-10 short:w-10 ${on ? "ring-pulse bg-accent text-ink-950" : "bg-white/[0.06] text-slate-500 ring-1 ring-white/10"}`}
-        >
-          <Phone className="h-5 w-5" />
-        </span>
-        <div className="leading-tight">
-          <p className={`text-xs font-medium ${on ? "text-accent" : "text-slate-500"}`}>Режим 2 · вы пациент</p>
-          <p className={`mt-0.5 text-sm font-medium ${on ? "text-slate-100" : "text-slate-400"}`}>Входящий от ИИ-оператора</p>
-        </div>
-      </div>
-
-      <div aria-hidden className="relative flex min-h-8 flex-1 items-center justify-center gap-[3px] opacity-80">
-        {Array.from({ length: 40 }, (_, i) => (
-          <span
-            key={i}
-            className={`w-[3px] rounded-full ${on ? "wave-bar bg-accent/70" : "bg-slate-600/60"}`}
-            style={{
-              height: `${on ? 22 + ((i * 37) % 34) : 6 + ((i * 37) % 14)}px`,
-              ...(on ? { animationDelay: `${(i % 9) * 0.13}s`, animationDuration: `${1 + (i % 5) * 0.18}s` } : {}),
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="relative">
-        <h3 className={`text-2xl font-semibold leading-tight tracking-[-0.02em] text-balance lg:text-xl tall:text-2xl short:text-lg ${on ? "" : "text-slate-300"}`}>
-          Примите звонок и сыграйте любого пациента
-        </h3>
-        <p className="mt-2 text-sm leading-relaxed lg:line-clamp-4 text-pretty text-slate-400 short:line-clamp-3 short:text-[13px] low:hidden">
-          Роли меняются: звонит ИИ, а пациента играете вы. Соглашайтесь, сомневайтесь, торгуйтесь или откажитесь. После звонка получите разбор, а удачные приёмы попадут в базу знаний.
-        </p>
-      </div>
-
-      {on ? (
-        <span className="relative flex w-full items-center justify-between rounded-full bg-accent py-1.5 pr-1.5 pl-5 text-sm font-semibold text-ink-950 transition duration-500 ease-[var(--ease-spring)] group-active:scale-[0.98]">
-          Принять звонок
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-105">
-            <ArrowUpRight className="h-4 w-4" />
-          </span>
-        </span>
-      ) : (
-        <span className="relative flex w-full items-center justify-between rounded-full bg-white/[0.05] py-1.5 pr-1.5 pl-5 text-sm font-medium text-slate-500">
-          Временно недоступно
-          <span className="flex h-8 items-center rounded-full px-3 text-xs">Скоро</span>
-        </span>
-      )}
-    </div>
-  );
-  return on ? (
-    <Link href="/operator" className="rise bezel group flex min-h-0 transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]" style={{ animationDelay: "180ms" }}>
-      {body}
-    </Link>
-  ) : (
-    <div aria-disabled="true" title="Раздел временно недоступен" className="rise bezel flex min-h-0 cursor-default" style={{ animationDelay: "180ms" }}>
-      {body}
-    </div>
-  );
-}
-
-/** The operator's knowledge base; greyed out with the AI operator, which is the only one that uses it. */
-function KnowledgeCard() {
-  if (!KNOWLEDGE_ON) {
-    return (
-      <div aria-disabled="true" title="Раздел временно недоступен" className="rise bezel flex cursor-default" style={{ animationDelay: "240ms" }}>
-        <div className="bezel-core flex flex-1 items-center justify-between gap-4 p-4 opacity-55 low:p-3">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs text-slate-500">
-              <Spark className="h-3.5 w-3.5" />
-              База знаний оператора
-            </p>
-            <p className="mt-1.5 text-sm font-medium text-slate-400">Временно недоступно</p>
-            <p className="mt-1 line-clamp-2 text-xs text-pretty text-slate-500 short:hidden">Что работает и чего избегать. Подставляется в каждый новый звонок.</p>
-          </div>
-          <Soon />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <Link
-      href="/knowledge"
-      className="rise bezel group flex transition duration-500 ease-[var(--ease-spring)] hover:-translate-y-1 active:scale-[0.99]"
-      style={{ animationDelay: "240ms" }}
-    >
-      <div className="bezel-core flex flex-1 items-center justify-between gap-4 p-4 transition-colors duration-500 group-hover:bg-ink-700 low:p-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Spark className="h-3.5 w-3.5 text-accent" />
-            База знаний оператора
-          </p>
-          <div className="mt-1.5">
-            <KbBadge />
-          </div>
-          <p className="mt-1 line-clamp-2 text-xs text-pretty text-slate-500 short:hidden">Что работает и чего избегать. Подставляется в каждый новый звонок.</p>
-        </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-slate-300 transition duration-500 ease-[var(--ease-spring)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:text-ink-950">
-          <ArrowUpRight className="h-4 w-4" />
-        </span>
-      </div>
-    </Link>
   );
 }
