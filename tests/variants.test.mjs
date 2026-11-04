@@ -8,12 +8,14 @@ const { evaluationPrompt } = await import("../lib/evaluation.ts");
 const pub = (await import("../lib/scenarios-public.json", { with: { type: "json" } })).default;
 const priv = (await import("../lib/scenarios-private.json", { with: { type: "json" } })).default;
 
-test("every variant has a record for the administrator and the truth for the patient and the judge", () => {
+test("every variant has the truth for the patient and the judge, and a record when the patient has one", () => {
   for (const s of pub.filter((x) => x.variants)) {
     const ids = s.variants.map((v) => v.id).sort();
     assert.deepEqual(Object.keys(priv[s.id].variants).sort(), ids, s.id);
     for (const v of s.variants) {
-      assert.ok(v.record.visits.length > 0 && v.record.rules.length > 20, `${s.id}.${v.id}`);
+      // Patients either have a record in every variant (a claim checked in the base) or in none (Natalia's openers).
+      assert.equal(!!v.record, !!s.variants[0].record, `${s.id}.${v.id}`);
+      if (v.record) assert.ok(v.record.visits.length > 0 && v.record.rules.length > 20, `${s.id}.${v.id}`);
       assert.ok(priv[s.id].variants[v.id].patient.length > 50 && priv[s.id].variants[v.id].judge.length > 50, `${s.id}.${v.id}`);
     }
   }

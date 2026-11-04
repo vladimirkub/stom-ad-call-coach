@@ -61,7 +61,8 @@ function Call({ id }: { id: string }) {
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
   // Patients with call variants (a warranty claim): one is picked for this visit to the page; the administrator can look
   // the patient up in the clinic's base, and when they did is sent with the evaluation.
-  const variants = ("variants" in scenario ? scenario.variants : undefined) as { id: string }[] | undefined;
+  const variants = ("variants" in scenario ? scenario.variants : undefined) as { id: string; record?: unknown }[] | undefined;
+  const withRecord = !!variants?.some((v) => v.record);
   const [variant, setVariant] = useState<string | null>(null);
   useEffect(() => {
     if (variants?.length) setVariant(variants[Math.floor(Math.random() * variants.length)].id);
@@ -343,7 +344,7 @@ function Call({ id }: { id: string }) {
         </Panel>
       </div>
 
-      {variant && (
+      {variant && withRecord && (
         <div className="mt-3">
           <PatientRecord record={record} open={recordOpenedAfter !== null} onOpen={openRecord} />
         </div>

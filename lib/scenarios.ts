@@ -34,7 +34,7 @@ function pickVariant(secret: Private, variant: unknown, ctx: ClinicContext): ({ 
 export function scenarioRecord(ctx: ClinicContext, id: string, variant: unknown): TreatmentRecord | null {
   const open = pub.find((s) => s.id === id);
   const v = pickVariant((priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" }, variant, ctx);
-  const record = v && open && "variants" in open ? (open.variants?.find((x) => x.id === v.id)?.record as TreatmentRecord | undefined) : undefined;
+  const record = v && open && "variants" in open ? ((open.variants as { id: string; record?: TreatmentRecord }[] | undefined)?.find((x) => x.id === v.id)?.record) : undefined;
   if (!v || !record) return null;
   return JSON.parse(JSON.stringify(record).replaceAll("{{doctor}}", v.doctor)) as TreatmentRecord;
 }

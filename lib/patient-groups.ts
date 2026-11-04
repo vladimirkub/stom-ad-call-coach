@@ -9,6 +9,7 @@ export const PATIENT_GROUPS = [
   { key: "claim", label: "Претензии", hint: "недовольны прошлым лечением" },
   // The label hides the twist (a call to the wrong clinic) so the administrator meets it in the call.
   { key: "wrong", label: "Нестандартные", hint: "необычные звонки" },
+  { key: "expert", label: "Знание услуг", hint: "проверяют, знает ли администратор услугу" },
 ] as const;
 export type PatientGroup = (typeof PATIENT_GROUPS)[number]["key"];
 
