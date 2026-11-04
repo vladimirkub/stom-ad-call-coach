@@ -39,3 +39,9 @@ test("the judge counts a named day and time as a booking and knows when the pati
   assert.doesNotMatch(evaluationSystem(false), /ЗВОНОК ЗАКОНЧИЛ ПАЦИЕНТ/);
   assert.match(evaluationSystem(false, "outbound", false, true), /ЗВОНОК ЗАКОНЧИЛ ПАЦИЕНТ/);
 });
+
+test("a patient's condition of the day reaches the judge", () => {
+  const scenario = { name: "Кирилл", age: 44, lead: "-", hiddenObjection: "-", showUpRisk: "-", condition: "На сегодня свободных окон нет." };
+  assert.match(evaluationPrompt({ scenario, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] }), /УСЛОВИЕ ТРЕНИРОВКИ \(оператор его знал\): На сегодня свободных окон нет\./);
+  assert.doesNotMatch(evaluationPrompt({ scenario: { ...scenario, condition: undefined }, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] }), /УСЛОВИЕ ТРЕНИРОВКИ/);
+});

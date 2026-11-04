@@ -27,6 +27,7 @@ export const PREFERENCES: Record<string, DirectionKey[]> = {
   artem: ["therapy", "single_implant", "prosthetics", "ortho", "full_arch", "kids"], // 29, acute pain, short of money
   alina: ["prosthetics", "ortho", "therapy", "single_implant", "kids", "full_arch"], // 28, veneers before her wedding
   valentina: ["prosthetics", "full_arch", "single_implant", "therapy", "ortho", "kids"], // 71, loose removable denture
+  kirill: ["therapy", "single_implant", "prosthetics", "full_arch", "ortho", "kids"], // 44, rotation worker, wants to be seen today
 };
 
 export const directionLabel = (key: string) => DIRECTIONS.find((d) => d.key === key)?.label ?? key;

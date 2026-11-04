@@ -5,6 +5,7 @@ import KbBadge from "../kb-badge";
 import { Brand } from "../ui";
 import { ArrowUpRight, Calculator, Phone, Spark } from "../icons";
 import { FEATURES } from "@/lib/features";
+import scenarios from "@/lib/scenarios-public.json";
 import { RememberHome } from "../home-link";
 import DirectionHeader from "../direction-header";
 
@@ -12,6 +13,9 @@ const TOOLS = [
   { href: "/analyze", title: "Оценить реальный звонок", text: "Звонок из CRM или запись: оценка по чек-листу.", Icon: Phone, on: FEATURES.realCalls },
   { href: "/calculator", title: "Калькулятор потерь", text: "Сколько выручки теряется на записи и неявках.", Icon: Calculator, on: FEATURES.calculator },
 ];
+// The patients' grid has 4 x 3 cells on desktop: switched-off tools only fill the cells the patients leave free.
+const GRID_CELLS = 12;
+const SHOWN_TOOLS = [...TOOLS.filter((t) => t.on), ...TOOLS.filter((t) => !t.on)].slice(0, Math.max(TOOLS.filter((t) => t.on).length, GRID_CELLS - scenarios.length));
 const OPERATOR_ON = FEATURES.operator;
 const KNOWLEDGE_ON = FEATURES.knowledge;
 
@@ -41,7 +45,7 @@ export default function Workspace() {
             </div>
           </header>
           <PatientGrid>
-            {TOOLS.map((t, i) =>
+            {SHOWN_TOOLS.map((t, i) =>
               t.on ? (
                 <Link
                   key={t.href}

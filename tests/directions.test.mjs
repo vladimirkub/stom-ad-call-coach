@@ -10,7 +10,7 @@ const D = await import("../lib/directions.ts");
 const { startPersonaFit, personaFitState } = await import("../lib/persona-fit.ts");
 
 const KEYS = D.DIRECTIONS.map((d) => d.key);
-const PATIENTS = ["elena", "nikolay", "igor", "svetlana", "marina", "dmitry", "olga", "artem", "alina", "valentina"];
+const PATIENTS = ["elena", "nikolay", "igor", "svetlana", "marina", "dmitry", "olga", "artem", "alina", "valentina", "kirill"];
 
 test("every ticked direction gets a patient, and nobody comes for an unticked one", () => {
   for (let mask = 1; mask < 1 << KEYS.length; mask++) {

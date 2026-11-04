@@ -3,7 +3,8 @@ import { modelRubric } from "./scoring.ts";
 import type { Turn } from "./schemas.ts";
 import type { CallDirection } from "./direction.ts";
 
-type ScenarioContext = { name: string; age: number; lead: string; hiddenObjection: string; showUpRisk: string };
+/** condition: a fact of the clinic's day the operator was told (e.g. no free slots today), see lib/scenarios-public.json. */
+type ScenarioContext = { name: string; age: number; lead: string; hiddenObjection: string; showUpRisk: string; condition?: string };
 
 /** Who called whom, as the judge reads it. */
 const CALL = {
@@ -39,7 +40,8 @@ export function evaluationPrompt({ scenario, memo, transcript, wishes = "" }: { 
   const context = scenario
     ? `Пациент: ${scenario.name}, ${scenario.age} лет. ${scenario.lead}
 Скрытая причина сомнений (известна тебе, но не оператору): ${scenario.hiddenObjection}
-Риск неявки (известен тебе, но не оператору): ${scenario.showUpRisk}`
+Риск неявки (известен тебе, но не оператору): ${scenario.showUpRisk}${scenario.condition ? `
+УСЛОВИЕ ТРЕНИРОВКИ (оператор его знал): ${scenario.condition} Оценивай с учётом условия: не снижай оператору за то, что он не записал на запрещённое условием время. Обещание принять пациента в запрещённое условием время («приходите, как-нибудь втиснем») — недостоверное обещание (noFalsePromises не засчитывай, внеси его в unsupportedClaims). Запись на другое конкретное время засчитывай как запись. Хорошая отработка: признать срочность, выяснить, почему именно сейчас и к какому сроку надо успеть, уточнить, нет ли острой боли или отёка, предложить ближайшие окна, лист ожидания на случай отмены с обещанием перезвонить и объяснить, что делать, если станет хуже.` : ""}`
     : "Это запись реального звонка. Скрытая причина сомнений заранее неизвестна.";
   return `${context}
 

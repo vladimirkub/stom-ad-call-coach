@@ -315,6 +315,10 @@ function Call({ id }: { id: string }) {
           <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">
             {inbound ? "Вы администратор. Ответьте на звонок, запишите пациента на приём, возьмите телефон и убедитесь, что он придёт." : "Вы оператор. Запишите пациента на приём и убедитесь, что он придёт."}
           </p>
+          {/* A patient may come with a condition of the clinic's day, such as no free slots today (lib/scenarios-public.json). */}
+          {"condition" in scenario && scenario.condition && (
+            <p className="mt-2 text-sm leading-relaxed text-pretty text-amber-200"><span className="font-medium">Условие:</span> {scenario.condition}</p>
+          )}
         </Panel>
       </div>
 
