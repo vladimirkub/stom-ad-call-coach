@@ -35,3 +35,22 @@ test("the call variant reaches the patient's situation and the judge; an unknown
   assert.match(opened, /после своей реплики номер 2/);
   assert.match(evaluationPrompt({ scenario: match, memo: [], transcript }), /карту в базе НЕ открывал/);
 });
+
+test("the treating doctor comes from the clinic's legend, by the complaint's specialty", async () => {
+  const { clinicDoctor } = await import("../lib/clinic-context.ts");
+  const { scenarioRecord } = await import("../lib/scenarios.ts");
+  const doctors = [
+    { section: "doctors", text: "Манин Андрей Викторович — директор клиники.", source: null },
+    { section: "doctors", text: "Ли Марк — терапевт-эндодонтист со стажем 9 лет, лечит каналы.", source: null },
+    { section: "doctors", text: "Колесников Евгений Игоревич — стоматолог-хирург, удаление зубов и имплантация.", source: null },
+  ];
+  const ctx = { ...clinicContext(null), facts: doctors };
+  assert.equal(clinicDoctor(ctx, "хирург|удален"), "Колесников Евгений Игоревич");
+  assert.equal(clinicDoctor(ctx, "эндодонт|канал|терапевт"), "Ли Марк");
+  assert.equal(clinicDoctor(ctx), "Ли Марк", "the director is not a treating doctor");
+  assert.equal(clinicDoctor(clinicContext(null)), "Петрова Снежана Денисовна");
+  const record = scenarioRecord(ctx, "sergey", "extraction_swelling");
+  assert.equal(record.visits[0].doctor, "Колесников Евгений Игоревич");
+  assert.match(record.rules, /Колесников Евгений Игоревич сегодня не принимает/);
+  assert.match(getScenario("sergey", ctx, "inbound", "root_canal").prompt, /Ли Марк лечил\(а\) тебе каналы/);
+});

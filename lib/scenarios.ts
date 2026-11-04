@@ -2,30 +2,47 @@
 import pub from "./scenarios-public.json" with { type: "json" };
 import priv from "./scenarios-private.json" with { type: "json" };
 import { patientPrompt } from "./patient-behavior.ts";
-import { clinicContext, personaVars, type ClinicContext } from "./clinic-context.ts";
+import { clinicContext, clinicDoctor, personaVars, type ClinicContext } from "./clinic-context.ts";
 import type { CallDirection } from "./direction.ts";
 
 /**
- * A call variant (Viktor's warranty claim): what the patient knows in this call and the truth for the judge. The page
+ * A call variant (Viktor's warranty claim, Sergey's complaint): what the patient knows in this call and the truth for the judge. The page
  * picks one per call and shows its treatment record (scenarios-public.json) to the administrator.
  */
-type Variant = { patient: string; judge: string };
+/** urgent: the right handling is to route the patient to a doctor now, not to book a visit (lib/scoring.ts). */
+type Variant = { patient: string; judge: string; specialty?: string; urgent?: boolean };
+type Visit = { date: string; work: string; tooth: string; warranty?: string; doctor?: string };
+export type TreatmentRecord = { patient: string; visits: Visit[]; rules: string };
 type Private = { voiceId: string; prompt: string; judgeNote?: string; variants?: Record<string, Variant> };
 
 export const scenarioIds = pub.map((s) => s.id);
 
-/** The variant asked for, or the patient's first one; null for patients without variants. */
-function pickVariant(secret: Private, variant: unknown): { id: string } & Variant | null {
+/**
+ * The variant asked for, or the patient's first one; null for patients without variants. "{{doctor}}" in its texts
+ * becomes this clinic's treating doctor for the variant's specialty (lib/clinic-context.ts).
+ */
+function pickVariant(secret: Private, variant: unknown, ctx: ClinicContext): ({ id: string; doctor: string } & Variant) | null {
   const ids = Object.keys(secret.variants ?? {});
   if (!ids.length) return null;
   const id = typeof variant === "string" && ids.includes(variant) ? variant : ids[0];
-  return { id, ...secret.variants![id] };
+  const v = secret.variants![id];
+  const doctor = clinicDoctor(ctx, v.specialty);
+  return { id, doctor, ...v, patient: v.patient.replaceAll("{{doctor}}", doctor), judge: v.judge.replaceAll("{{doctor}}", doctor) };
+}
+
+/** The clinic's record for this call variant, with the treating doctor filled in; null when there is none. */
+export function scenarioRecord(ctx: ClinicContext, id: string, variant: unknown): TreatmentRecord | null {
+  const open = pub.find((s) => s.id === id);
+  const v = pickVariant((priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" }, variant, ctx);
+  const record = v && open && "variants" in open ? (open.variants?.find((x) => x.id === v.id)?.record as TreatmentRecord | undefined) : undefined;
+  if (!v || !record) return null;
+  return JSON.parse(JSON.stringify(record).replaceAll("{{doctor}}", v.doctor)) as TreatmentRecord;
 }
 
 /** The patient's dynamic variables for this clinic, direction and call variant (text fills them in, voice passes them). */
 export function scenarioVars(ctx: ClinicContext, id: string, direction: CallDirection = "outbound", variant?: unknown) {
   const vars = personaVars(ctx, id, direction);
-  const v = pickVariant((priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" }, variant);
+  const v = pickVariant((priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" }, variant, ctx);
   return v ? { ...vars, situation: `${vars.situation}\n\n${v.patient}` } : vars;
 }
 
@@ -35,8 +52,8 @@ export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null
   const secret = (priv as Record<string, Private>)[String(id)];
   if (!open || !secret) return null;
   const fit = ctx.personas[open.id];
-  const v = pickVariant(secret, variant);
-  const record = v && "variants" in open ? open.variants?.find((x) => x.id === v.id)?.record : undefined;
+  const v = pickVariant(secret, variant, ctx);
+  const record = v ? (scenarioRecord(ctx, open.id, v.id) ?? undefined) : undefined;
   return {
     ...open,
     voiceId: secret.voiceId,
@@ -46,7 +63,7 @@ export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null
     // How the judge should score this patient's condition of the day; kept off the trainee's pages.
     judgeNote: secret.judgeNote,
     // This call's variant: the record the administrator saw and the truth behind the complaint, for the judge.
-    variant: v && { id: v.id, judge: v.judge, record },
+    variant: v && { id: v.id, judge: v.judge, urgent: !!v.urgent, record },
     prompt: patientPrompt(secret.prompt, scenarioVars(ctx, open.id, direction, v?.id)),
   };
 }

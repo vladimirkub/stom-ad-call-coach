@@ -71,3 +71,8 @@ test("cut-off items are not counted; a skill with nothing left gives its weight 
   // 8*.25 + 6*.3 + 4*.25 = 4.8 of 0.8 -> 60
   assert.equal(totalScore({ discovery: 8, objectionHandling: 6, booking: 4, showUp: null }), 60);
 });
+
+test("urgent routing leaves booking and show-up out of the score", async () => {
+  const { URGENT_SKIP_SKILLS } = await import("../lib/scoring.ts");
+  assert.deepEqual([...URGENT_SKIP_SKILLS], ["booking", "showUp"]);
+});

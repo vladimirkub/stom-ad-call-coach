@@ -4,21 +4,22 @@ import { Panel } from "./ui";
 
 export type TreatmentRecord = {
   patient: string;
-  visits: { date: string; work: string; tooth: string; warranty: string }[];
+  visits: { date: string; work: string; tooth: string; warranty?: string; doctor?: string }[];
   rules: string;
 };
 
 /**
- * The clinic's database for a patient with a claim (Viktor): closed until the administrator looks the patient up, then
+ * The clinic's database for a patient with call variants (Viktor, Sergey): closed until the administrator looks the patient up, then
  * the treatment history to compare the complaint with. Opening it is part of what the call is scored on.
  */
-export function PatientRecord({ record, open, onOpen }: { record: TreatmentRecord; open: boolean; onOpen: () => void }) {
+export function PatientRecord({ record, open, onOpen }: { record: TreatmentRecord | null; open: boolean; onOpen: () => void }) {
+  const withDoctor = record?.visits.some((v) => v.doctor);
   return (
     <Panel delay={160} innerClassName="p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-slate-500">База клиники</p>
-          <p className="mt-0.5 text-sm text-slate-300">{open ? record.patient : "Найдите пациента, чтобы сверить жалобу с историей лечения."}</p>
+          <p className="mt-0.5 text-sm text-slate-300">{!open ? "Найдите пациента, чтобы сверить жалобу с историей лечения." : record ? record.patient : "Ищем в базе…"}</p>
         </div>
         {!open && (
           <button type="button" onClick={onOpen} className="btn btn-light shrink-0 px-4 py-2 text-xs">
@@ -26,7 +27,7 @@ export function PatientRecord({ record, open, onOpen }: { record: TreatmentRecor
           </button>
         )}
       </div>
-      {open && (
+      {open && record && (
         <>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[34rem] text-left text-sm">
@@ -35,7 +36,7 @@ export function PatientRecord({ record, open, onOpen }: { record: TreatmentRecor
                   <th className="py-1.5 pr-4 font-medium">Дата</th>
                   <th className="py-1.5 pr-4 font-medium">Что делали</th>
                   <th className="py-1.5 pr-4 font-medium">Зуб</th>
-                  <th className="py-1.5 font-medium">Гарантия</th>
+                  <th className="py-1.5 font-medium">{withDoctor ? "Врач" : "Гарантия"}</th>
                 </tr>
               </thead>
               <tbody className="text-slate-200">
@@ -44,7 +45,7 @@ export function PatientRecord({ record, open, onOpen }: { record: TreatmentRecor
                     <td className="py-2 pr-4 whitespace-nowrap tabular-nums">{v.date}</td>
                     <td className="py-2 pr-4">{v.work}</td>
                     <td className="py-2 pr-4">{v.tooth}</td>
-                    <td className="py-2">{v.warranty}</td>
+                    <td className="py-2">{withDoctor ? v.doctor : v.warranty}</td>
                   </tr>
                 ))}
               </tbody>

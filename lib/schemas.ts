@@ -14,6 +14,8 @@ export const EvaluationSchema = z.object({
   appointmentBooked: z.boolean(),
   // The patient's turn where they agreed to the booking; 0 when they did not.
   agreedTurn: z.number().int().min(0).default(0),
+  // Danger signs after treatment: the operator put the patient through to a doctor or sent them to urgent care at once.
+  urgentRouted: z.boolean().default(false),
   objectionUncovered: z.boolean(),
   objectionEvidence: z.string().default(""),
   unsupportedClaims: z.array(z.string()).max(5).default([]),

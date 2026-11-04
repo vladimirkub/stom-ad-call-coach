@@ -61,14 +61,22 @@ function Call({ id }: { id: string }) {
   const add = (turn: Turn) => setTranscript((t) => [...t, turn]);
   // Patients with call variants (a warranty claim): one is picked for this visit to the page; the administrator can look
   // the patient up in the clinic's base, and when they did is sent with the evaluation.
-  const variants = ("variants" in scenario ? scenario.variants : undefined) as { id: string; record: TreatmentRecord }[] | undefined;
+  const variants = ("variants" in scenario ? scenario.variants : undefined) as { id: string }[] | undefined;
   const [variant, setVariant] = useState<string | null>(null);
   useEffect(() => {
     if (variants?.length) setVariant(variants[Math.floor(Math.random() * variants.length)].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const record = variants?.find((v) => v.id === variant)?.record;
+  const [record, setRecord] = useState<TreatmentRecord | null>(null);
   const [recordOpenedAfter, setRecordOpenedAfter] = useState<number | null>(null);
+  // The record comes from the server, with this clinic's treating doctor in it.
+  function openRecord() {
+    setRecordOpenedAfter(transcript.filter((t) => t.role === "user").length);
+    fetch(`/api/patient-record?scenario=${id}&variant=${variant}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => b?.record && setRecord(b.record))
+      .catch(() => {});
+  }
   // The voice call in progress and whether anyone has spoken yet: a call that dies silent is asked about (voiceDown).
   const voiceCall = useRef<{ id: string; messages: number } | null>(null);
   // ElevenLabs refused the call (its credits ran out): the administrator sees why instead of a lost connection.
@@ -335,9 +343,9 @@ function Call({ id }: { id: string }) {
         </Panel>
       </div>
 
-      {record && (
+      {variant && (
         <div className="mt-3">
-          <PatientRecord record={record} open={recordOpenedAfter !== null} onOpen={() => setRecordOpenedAfter(transcript.filter((t) => t.role === "user").length)} />
+          <PatientRecord record={record} open={recordOpenedAfter !== null} onOpen={openRecord} />
         </div>
       )}
 

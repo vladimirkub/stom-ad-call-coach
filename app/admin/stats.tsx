@@ -431,8 +431,8 @@ function TrainingView({ id, go }: { id: string; go: (v: StatsView) => void }) {
             {cutOff.length > 0 && (
               <>
                 <div className="mt-5">
-                  <PanelTitle>Не успели · {cutOff.length}</PanelTitle>
-                  <p className="mt-1 text-xs text-pretty text-slate-500">Пациент согласился на запись и сразу положил трубку. Эти пункты не входят в балл.</p>
+                  <PanelTitle>Не учитывались · {cutOff.length}</PanelTitle>
+                  <p className="mt-1 text-xs text-pretty text-slate-500">Эти пункты не входят в балл: пациент сразу положил трубку после согласия или его срочно передали врачу.</p>
                 </div>
                 <ul className="mt-3 flex flex-col gap-1.5 text-sm text-slate-500">
                   {cutOff.map((c) => <li key={c.id}>{c.label}</li>)}

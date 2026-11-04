@@ -15,6 +15,9 @@ export type Scores = Record<SkillKey, number | null>;
 export type ChecklistItem = RubricItem & { done: boolean; evidence?: string; cutOff?: boolean };
 
 /** Closing items the operator can only do after the patient's agreement: not counted when the patient hangs up at once. */
+/** Booking and show-up items, not needed when a patient with danger signs is put through to a doctor at once. */
+export const URGENT_SKIP_SKILLS = ["booking", "showUp"] as const;
+
 export const CUT_OFF_IDS = ["clearNextStep", "gotContact", "repeatedDetails", "route", "askedObstacles", "gotCommitment", "reminderAndReschedule"];
 
 /** Skill score 0-10 = share of passed checklist items, cut-off items left out. Deterministic, never model-computed. */

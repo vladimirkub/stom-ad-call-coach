@@ -179,7 +179,7 @@ export default function Results() {
                 </div>
                 <details className="group mt-1.5 text-sm">
                   <summary className="cursor-pointer list-none text-xs text-slate-500 transition hover:text-slate-300">
-                    Критерии: {counted.filter((i) => i.done).length} из {counted.length}{counted.length < items.length && ` · не успели: ${items.length - counted.length}`} <span className="group-open:hidden">· показать</span><span className="hidden group-open:inline">· скрыть</span>
+                    Критерии: {counted.filter((i) => i.done).length} из {counted.length}{counted.length < items.length && ` · не учитывались: ${items.length - counted.length}`} <span className="group-open:hidden">· показать</span><span className="hidden group-open:inline">· скрыть</span>
                   </summary>
                   <ul className="mt-2.5 space-y-2">
                     {items.map((c) => (

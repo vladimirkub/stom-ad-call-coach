@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
 import { EvaluationSchema, TranscriptSchema, type EvaluationResult } from "@/lib/schemas";
 import { gemmaJson } from "@/lib/gemma";
-import { CUT_OFF_IDS, rubricFor, skillScores, totalScore, type ChecklistItem } from "@/lib/scoring";
+import { CUT_OFF_IDS, URGENT_SKIP_SKILLS, rubricFor, skillScores, totalScore, type ChecklistItem } from "@/lib/scoring";
 import { evaluationPrompt, evaluationSystem } from "@/lib/evaluation";
 import { TEMPO_NOTES, onTime } from "@/lib/tempo";
 import { getScenario } from "@/lib/scenarios";
@@ -63,6 +63,12 @@ export async function POST(req: Request) {
     if (hungUp && !timedOut && ev.appointmentBooked && agreed > lastOperatorTurn && transcript[agreed - 1]?.role === "agent") {
       for (const c of checklist) {
         if (CUT_OFF_IDS.includes(c.id) && !c.done) Object.assign(c, { cutOff: true, evidence: "пациент положил трубку сразу после согласия" });
+      }
+    }
+    // Danger signs, and the operator routed the patient to a doctor at once: booking a visit was not the task.
+    if (scenario?.variant?.urgent && ev.urgentRouted) {
+      for (const c of checklist) {
+        if ((URGENT_SKIP_SKILLS as readonly string[]).includes(c.skill) && !c.done) Object.assign(c, { cutOff: true, evidence: "не требовалось: пациент срочно передан врачу" });
       }
     }
     // Tempo: booked within the target (lib/tempo.ts): 3 minutes in voice, 10 operator replies in text.

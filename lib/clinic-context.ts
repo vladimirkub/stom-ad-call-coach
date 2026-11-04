@@ -87,6 +87,24 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
 }
 
 /** The dynamic variables of a voice patient: the same clinic-specific text the text mode gets. */
+/** Used when the legend names no doctor (or there is no legend). */
+const DEFAULT_DOCTOR = "Петрова Снежана Денисовна";
+/** Doctors who do not treat patients day to day: the director, a founder on leave, a hygienist or an orthodontist. */
+const NOT_TREATING = /директор|основател|декрет|гигиенист|ортодонт|руководител/i;
+
+/**
+ * A treating doctor from the legend's «Врачи» facts ("Колесников Евгений Игоревич — стоматолог-хирург…"), preferring one
+ * whose description matches `specialty` (a regex source, e.g. "хирург|удален"); the name is the text before the dash.
+ */
+export function clinicDoctor(ctx: ClinicContext, specialty?: string): string {
+  const doctors = (ctx.facts ?? [])
+    .filter((f) => f.section === "doctors" && !NOT_TREATING.test(f.text))
+    .map((f) => ({ name: f.text.split(/\s[—–-]\s/)[0].trim(), text: f.text }))
+    .filter((d) => /^[А-ЯЁ][а-яё]+(\s[А-ЯЁ][а-яё]+){1,2}$/.test(d.name));
+  const match = specialty ? doctors.find((d) => new RegExp(specialty, "i").test(d.text)) : undefined;
+  return (match ?? doctors[0])?.name ?? DEFAULT_DOCTOR;
+}
+
 export function personaVars(ctx: ClinicContext, scenarioId: string, direction: CallDirection = "outbound") {
   const p = ctx.personas[scenarioId];
   const siteFacts = ctx.facts && p.direction ? siteFactsFromFacts(factsForDirection(ctx.facts, p.direction)) : ctx.siteFacts;

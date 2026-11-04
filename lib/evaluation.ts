@@ -4,15 +4,15 @@ import type { Turn } from "./schemas.ts";
 import type { CallDirection } from "./direction.ts";
 
 /** condition: a fact of the clinic's day the operator was told (e.g. no free slots today), see lib/scenarios-public.json. */
-type TreatmentRecord = { patient: string; visits: { date: string; work: string; tooth: string; warranty: string }[]; rules: string };
+type TreatmentRecord = { patient: string; visits: { date: string; work: string; tooth: string; warranty?: string; doctor?: string }[]; rules: string };
 type ScenarioContext = {
   name: string; age: number; lead: string; hiddenObjection: string; showUpRisk: string; condition?: string; judgeNote?: string;
-  variant?: { id: string; judge: string; record?: TreatmentRecord } | null;
+  variant?: { id: string; judge: string; urgent?: boolean; record?: TreatmentRecord } | null;
 };
 
 /** The treatment record the administrator could open, and whether they did, for a variant call. */
 function recordText(v: NonNullable<ScenarioContext["variant"]>, openedAfter: number | null) {
-  const visits = (v.record?.visits ?? []).map((x) => `- ${x.date}: ${x.work}; ${x.tooth}; гарантия: ${x.warranty}`).join("\n");
+  const visits = (v.record?.visits ?? []).map((x) => `- ${x.date}: ${x.work}; ${x.tooth}${x.doctor ? `; врач: ${x.doctor}` : ""}${x.warranty ? `; гарантия: ${x.warranty}` : ""}`).join("\n");
   const opened = openedAfter === null ? "Оператор карту в базе НЕ открывал." : openedAfter === 0 ? "Оператор открыл карту в базе до своей первой реплики." : `Оператор открыл карту в базе после своей реплики номер ${openedAfter} (считая только реплики оператора).`;
   return `
 ${v.judge}
@@ -45,10 +45,10 @@ moments: до 6 ключевых моментов звонка. turn — ном�
 unsupportedClaims: только утверждения оператора, противоречащие фактам сайта (другие цены, сроки акции, условия гарантии) или заведомо невозможные («100% без боли», «скидка 50%»). То, чего на сайте нет, сюда не попадает. Если таких нет — пустой список.
 ${wishes ? `ПОЖЕЛАНИЯ КЛИНИКИ. В запросе есть пожелания руководителя: на чём проверить администраторов. В wishes перечисли темы из пожеланий, которые в этом звонке ПОДНИМАЛИСЬ (пациентом или оператором), до 6: topic — тема в 2–5 словах, done — справился ли оператор так, как хочет клиника, note — одно короткое предложение, что было хорошо или чего не хватило. Темы, которых в разговоре не было, не включай. На критерии чек-листа пожелания не влияют.
 ` : ""}${patientHungUp ? `ЗВОНОК ЗАКОНЧИЛ ПАЦИЕНТ: после своей последней реплики он положил трубку, и оператор уже ничего не мог ответить. Не упрекай оператора за то, чего он не сказал после этой реплики.
-` : ""}appointmentBooked = true, только если пациент явно согласился на конкретную запись: сам назвал или принял конкретный день и время («давайте в среду в 12:00»), даже если оператор уже не успел это подтвердить. gotAgreement засчитай по тому же правилу. agreedTurn — номер реплики пациента, в которой он дал это согласие; 0, если не дал.${real ? "" : "\nobjectionUncovered = true, только если вопросы оператора привели к тому, что пациент раскрыл настоящую причину сомнений."}
+` : ""}appointmentBooked = true, только если пациент явно согласился на конкретную запись: сам назвал или принял конкретный день и время («давайте в среду в 12:00»), даже если оператор уже не успел это подтвердить. gotAgreement засчитай по тому же правилу. agreedTurn — номер реплики пациента, в которой он дал это согласие; 0, если не дал. urgentRouted = true, только если при опасных симптомах (нарастающий отёк, высокая температура, трудно глотать или дышать) оператор сразу соединил пациента с врачом или направил на срочную помощь, а не просто записал на приём.${real ? "" : "\nobjectionUncovered = true, только если вопросы оператора привели к тому, что пациент раскрыл настоящую причину сомнений."}
 Все текстовые поля пиши ПО-РУССКИ, ключи JSON оставь латиницей.
 Ответь ТОЛЬКО одним JSON-объектом, без markdown, строго такой формы:
-{"passed":["introduced"],"missed":[{"id":"route","note":"..."}],"moments":[{"turn":1,"kind":"good","comment":"..."}],"appointmentBooked":false,"agreedTurn":0,"objectionUncovered":false,"objectionEvidence":"цитата или пояснение","unsupportedClaims":[],"summary":"2 предложения","strengths":["..."],"improvements":["конкретный совет: точная фраза, которую стоит сказать в следующий раз"]${wishes ? `,"wishes":[{"topic":"наркоз у детей","done":false,"note":"..."}]` : ""}}`;
+{"passed":["introduced"],"missed":[{"id":"route","note":"..."}],"moments":[{"turn":1,"kind":"good","comment":"..."}],"appointmentBooked":false,"agreedTurn":0,"urgentRouted":false,"objectionUncovered":false,"objectionEvidence":"цитата или пояснение","unsupportedClaims":[],"summary":"2 предложения","strengths":["..."],"improvements":["конкретный совет: точная фраза, которую стоит сказать в следующий раз"]${wishes ? `,"wishes":[{"topic":"наркоз у детей","done":false,"note":"..."}]` : ""}}`;
 }
 
 /** The call itself: the patient's secret context (none for a real call), the clinic's site facts and the numbered transcript. */
