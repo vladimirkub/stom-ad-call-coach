@@ -35,7 +35,7 @@ type Private = { prompt: string; hiddenObjection: string; showUpRisk: string; si
  * Patients for whom money is a real obstacle: only they ask about installments or credit. Asked by everyone, the question
  * made every call about installments, and offering them unasked can offend a patient (clinic feedback, Nov 2026).
  */
-export const INSTALLMENT_ASKERS = new Set(["artem", "elena", "olga", "nikolay"]);
+export const INSTALLMENT_ASKERS = new Set(["artem", "elena", "olga", "nikolay", "karina"]);
 const INSTALLMENT = /рассроч|кредит/i;
 
 /**
