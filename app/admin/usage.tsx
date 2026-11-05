@@ -185,7 +185,7 @@ export function UsagePanel() {
               <p className="font-medium text-slate-100">{p.label}</p>
               <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums text-slate-50">{rub(p.priceRub)}</p>
               <p className="mt-1 text-xs text-slate-500">
-                {Number.isFinite(p.admins) ? `до ${p.admins} администраторов` : "от 9 администраторов или несколько филиалов"}, {p.minutes} мин. голоса в месяц
+                {Number.isFinite(p.admins) ? `до ${p.admins} администраторов` : "от 9 администраторов или нескольких филиалов"}, {p.minutes} мин. голоса в месяц
               </p>
             </li>
           ))}

@@ -19,7 +19,7 @@ export type RubricItem = {
 export const RUBRIC: RubricItem[] = [
   { id: "introduced", skill: "discovery", label: "Представился и назвал клинику" },
   { id: "askedConvenient", skill: "discovery", label: "Спросил, удобно ли говорить", only: "outbound" },
-  { id: "confirmedRequest", skill: "discovery", label: "Подтвердил заявку и что интересует пациента", only: "outbound" },
+  { id: "confirmedRequest", skill: "discovery", label: "Подтвердил заявку и уточнил, что интересует пациента", only: "outbound" },
   { id: "askedName", skill: "discovery", label: "Узнал имя пациента и обращался по имени", only: "inbound" },
   { id: "clarifiedRequest", skill: "discovery", label: "Выяснил, что интересует пациента и откуда он узнал о клинике", only: "inbound" },
   { id: "openQuestions", skill: "discovery", label: "Задал открытые вопросы о причинах и переживаниях" },
@@ -36,7 +36,7 @@ export const RUBRIC: RubricItem[] = [
   { id: "respectedConstraints", skill: "booking", label: "Учёл ограничения пациента по времени и месту" },
   { id: "explainedFormat", skill: "booking", label: "Объяснил, что будет на приёме (формат, бесплатная диагностика)" },
   { id: "gotAgreement", skill: "booking", label: "Получил явное согласие на конкретную запись" },
-  { id: "gotContact", skill: "booking", label: "Попросил телефон и объяснил зачем: подтверждение и напоминание", only: "inbound" },
+  { id: "gotContact", skill: "booking", label: "Попросил телефон и объяснил, зачем: подтверждение и напоминание", only: "inbound" },
   { id: "clearNextStep", skill: "booking", label: "Закончил чётким следующим шагом, а не «я подумаю»" },
   { id: "onTime", skill: "booking", label: "Записал пациента за 3 минуты (в тексте — за 10 реплик)", scenarioOnly: true, auto: true },
 

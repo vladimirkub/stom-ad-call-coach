@@ -250,7 +250,7 @@ export default function Results() {
         {(result.wishes ?? []).length > 0 && (
           <Panel delay={190} innerClassName="p-5 sm:p-6">
             <PanelTitle icon={<ListCheck />}>По пожеланиям клиники</PanelTitle>
-            <p className="mt-1 text-xs text-slate-500">Темы, на которых руководитель хочет проверить администраторов. В балл из 100 не входят.</p>
+            <p className="mt-1 text-xs text-slate-500">Темы, по которым руководитель хочет проверить администраторов. В балл из 100 не входят.</p>
             <ul className="mt-3 space-y-2.5 text-sm">
               {result.wishes.map((w, i) => (
                 <li key={i} className="flex gap-2.5">
