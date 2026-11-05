@@ -7,6 +7,7 @@ import {
 import { ensurePersonaFit, personaFitState, startPersonaFit } from "@/lib/persona-fit";
 import { DIRECTIONS, assignDirections, getDirections, setDirections, suggestDirections } from "@/lib/directions";
 import { approveProposal, pendingProposal, proposalChanges, rejectProposal } from "@/lib/proposals";
+import { isAutonomous, rollbackTo, setAutonomous } from "@/lib/clinic-setup";
 
 function state(clinicId: number) {
   expireStaleAnalyses();
@@ -23,6 +24,8 @@ function state(clinicId: number) {
     offers: getOffers(clinicId),
     wishes: getWishes(clinicId),
     formerDoctors: getFormerDoctors(clinicId),
+    // The manager sets the clinic up alone (lib/clinic-setup.ts), or proposes changes for approval.
+    autonomous: isAutonomous(clinicId),
     approved,
     working,
     history: legendHistory(clinicId),
@@ -69,7 +72,7 @@ export async function POST(req: Request) {
         saveDraft(clinicId, body.facts);
         break;
       case "approve":
-        approveDraft(clinicId, body.facts);
+        approveDraft(clinicId, body.facts, { author: "Stom AD" });
         // All patients are refitted to every new version in the background.
         startPersonaFit(clinicId);
         break;
@@ -89,6 +92,12 @@ export async function POST(req: Request) {
       case "formerDoctors":
         // Filled into the calls of the patient who asks for a former doctor; nothing to refit.
         setFormerDoctors(clinicId, body.formerDoctors);
+        break;
+      case "autonomous":
+        setAutonomous(clinicId, !!body.on);
+        break;
+      case "rollback":
+        rollbackTo(clinicId, Number(body.version), "Stom AD");
         break;
       case "discard":
         discardDraft(clinicId);

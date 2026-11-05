@@ -21,7 +21,8 @@ type State = {
   formerDoctors: string[];
   approved: Legend | null;
   working: Legend | null;
-  history: { id: number; version: number; approvedAt: number; facts: number; status: string }[];
+  history: { id: number; version: number; approvedAt: number; facts: number; status: string; origin: string; author: string; note: string }[];
+  autonomous: boolean;
   changes: { added: string[]; removed: Fact[] } | null;
   patients: { status: "pending" | "ready" | "failed" | null; error: string | null; personas: Record<string, Fit> } | null;
   directions: { options: { key: string; label: string; hint: string }[]; selected: string[]; suggested: string[]; plan: Record<string, string> };
@@ -191,8 +192,46 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
             ? <>Утверждена версия {approved.version} от {date(approved.approvedAt!)} · {approved.facts.length} фактов. Тренировки строятся на ней.</>
             : <>Легенда ещё не утверждена: клиника тренируется на общей легенде.</>}
         </p>
-        {state.history.length > 1 && (
-          <p className="mt-1 text-xs text-slate-500">Прошлые версии: {state.history.filter((h) => h.status === "archived").map((h) => `v${h.version} (${date(h.approvedAt)})`).join(", ")}</p>
+        <label className="mt-3 flex items-start gap-2.5 text-sm text-slate-300">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]"
+            checked={state.autonomous}
+            disabled={!!busy}
+            onChange={(e) => run("autonomous", { action: "autonomous", on: e.target.checked }, e.target.checked ? "Руководитель настраивает клинику сам" : "Изменения руководителя снова идут на утверждение")}
+          />
+          <span>
+            <span className="font-medium text-slate-100">Автономная настройка</span>
+            <span className="block text-xs text-slate-500">Руководитель сам меняет сайты, пожелания и врачей и пересобирает легенду без вашего утверждения. Выключите, чтобы изменения снова шли к вам на утверждение.</span>
+          </span>
+        </label>
+        {state.history.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-slate-400">История версий</p>
+            <ul className="mt-1.5 flex flex-col gap-1 text-xs">
+              {state.history.map((h) => (
+                <li key={h.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="w-8 font-semibold tabular-nums text-slate-200">v{h.version}</span>
+                  <span className="text-slate-500">
+                    {date(h.approvedAt)} · {h.author || "Stom AD"}
+                    {h.note ? ` · ${h.note}` : ""} · {h.facts} фактов
+                  </span>
+                  {h.status === "approved" ? (
+                    <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] text-accent">текущая</span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => window.confirm(`Вернуть версию ${h.version}? Она станет новой версией, пациенты пересоберутся.`) && run("rollback", { action: "rollback", version: h.version }, `Возвращена версия ${h.version}, пациенты пересобираются`)}
+                      className="rounded-full px-2.5 py-0.5 text-[11px] text-slate-300 ring-1 ring-inset ring-white/10 transition hover:bg-white/[0.06]"
+                    >
+                      Вернуть
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </Panel>
 

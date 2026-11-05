@@ -118,6 +118,10 @@ export function db(): DatabaseSync {
     if (!clinicCols.some((c) => c.name === "directions")) conn.exec("ALTER TABLE clinics ADD COLUMN directions TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE clinics ADD COLUMN wishes TEXT NOT NULL DEFAULT ''");
     if (!clinicCols.some((c) => c.name === "former_doctors")) conn.exec("ALTER TABLE clinics ADD COLUMN former_doctors TEXT NOT NULL DEFAULT '[]'");
+    // The manager's own facts (what the site does not say), kept across rebuilds; and whether the manager sets the clinic
+    // up alone (lib/clinic-setup.ts) or proposes changes for the owner's approval (lib/proposals.ts).
+    if (!clinicCols.some((c) => c.name === "own_facts")) conn.exec("ALTER TABLE clinics ADD COLUMN own_facts TEXT NOT NULL DEFAULT '[]'");
+    if (!clinicCols.some((c) => c.name === "autonomous")) conn.exec("ALTER TABLE clinics ADD COLUMN autonomous INTEGER NOT NULL DEFAULT 1");
     const usageCols = conn.prepare("PRAGMA table_info(usage)").all() as { name: string }[];
     if (!usageCols.some((c) => c.name === "error")) conn.exec("ALTER TABLE usage ADD COLUMN error TEXT");
     const proposalCols = conn.prepare("PRAGMA table_info(proposals)").all() as { name: string }[];
@@ -150,6 +154,12 @@ export function db(): DatabaseSync {
       conn.exec("ALTER TABLE legends ADD COLUMN personas_status TEXT");
       conn.exec("ALTER TABLE legends ADD COLUMN personas_error TEXT");
     }
+    // Who started a legend version (an analysis or a rollback) and approved it, for the history and the daily limit.
+    // Each rebuild a clinic manager starts, for the daily limit (a discarded draft still read the sites).
+    conn.exec("CREATE TABLE IF NOT EXISTS rebuilds (id INTEGER PRIMARY KEY, clinic_id INTEGER NOT NULL REFERENCES clinics(id), started_at INTEGER NOT NULL)");
+    if (!legendCols.some((c) => c.name === "origin")) conn.exec("ALTER TABLE legends ADD COLUMN origin TEXT NOT NULL DEFAULT 'owner'");
+    if (!legendCols.some((c) => c.name === "author")) conn.exec("ALTER TABLE legends ADD COLUMN author TEXT NOT NULL DEFAULT ''");
+    if (!legendCols.some((c) => c.name === "note")) conn.exec("ALTER TABLE legends ADD COLUMN note TEXT NOT NULL DEFAULT ''");
     g.__coachDb = conn;
   }
   return g.__coachDb;

@@ -5,6 +5,7 @@ import { useAuth } from "../auth-gate";
 import { PageHeader, Shell } from "../ui";
 import { StatsPanel, StatsScope, type StatsView } from "../admin/stats";
 import { ClinicSettings } from "./settings";
+import { ClinicSetup } from "./setup";
 
 // The clinic manager's cabinet: their team's statistics, each administrator and each call, PDF reports; and the
 // clinic's settings (directions, legend facts) sent to Stom AD for approval. Only their own clinic: the data comes
@@ -14,6 +15,8 @@ export default function ClinicCabinet() {
   const auth = useAuth();
   const [nav, setNav] = useState<StatsView | null>(null);
   const [tab, setTab] = useState<"team" | "settings">("team");
+  // Autonomous clinics set themselves up (lib/clinic-setup.ts); the others propose changes to Stom AD.
+  const [manual, setManual] = useState(false);
   if (auth.status !== "user") return null;
   const { user } = auth;
   if (user.role !== "manager" || !user.clinic) {
@@ -35,7 +38,9 @@ export default function ClinicCabinet() {
       <PageHeader eyebrow={`Кабинет клиники · ${user.clinic.legalName}`} title={tab === "team" ? "Как тренируется команда" : "Настройки клиники"}>
         {tab === "team"
           ? "Звонки администраторов, их баллы и частые ошибки. Нажмите на администратора или звонок, чтобы открыть подробности. Ваши собственные тренировки в статистику команды не входят."
-          : "Направления и факты о клинике, на которых строятся тренировки. Изменения вступают в силу после утверждения Stom AD."}
+          : manual
+            ? "Направления и факты о клинике, на которых строятся тренировки. Изменения вступают в силу после утверждения Stom AD."
+            : "Сайты, пожелания и врачи, на которых строятся тренировки. Заполните шаги и пересоберите легенду: утверждать у Stom AD не нужно."}
       </PageHeader>
       <div role="tablist" aria-label="Разделы кабинета" className="mb-5 flex w-fit gap-1 rounded-full bg-white/[0.03] p-1 ring-1 ring-white/[0.07]">
         {(
@@ -61,7 +66,7 @@ export default function ClinicCabinet() {
           <StatsPanel nav={nav ?? home} go={go} />
         </StatsScope>
       ) : (
-        <ClinicSettings />
+        manual ? <ClinicSettings /> : <ClinicSetup onManual={() => setManual(true)} />
       )}
     </Shell>
   );

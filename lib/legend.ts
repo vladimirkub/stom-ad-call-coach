@@ -22,7 +22,12 @@ const SECTION_KEYS = SECTIONS.map((s) => s.key) as [SectionKey, ...SectionKey[]]
 
 export type Fact = { section: SectionKey; text: string; source: string | null };
 export type LegendStatus = "analyzing" | "draft" | "failed" | "approved" | "archived";
-export type Legend = { id: number; status: LegendStatus; version: number | null; facts: Fact[]; pages: Page[]; error: string | null; createdAt: number; updatedAt: number; approvedAt: number | null };
+/** Who started a version: Stom AD in the admin, the clinic manager's rebuild, or a return to an older version. */
+export type LegendOrigin = "owner" | "manager" | "rollback";
+export type Legend = {
+  id: number; status: LegendStatus; version: number | null; facts: Fact[]; pages: Page[]; error: string | null; createdAt: number; updatedAt: number; approvedAt: number | null;
+  origin: LegendOrigin; author: string; note: string;
+};
 export type Site = { url: string; label: string };
 
 const MAX_SITES = 12;
@@ -30,6 +35,8 @@ const MAX_FACTS = 120;
 const MAX_OFFERS = 20_000;
 /** Source of facts taken from the owner's pasted ad offers rather than from a web page. */
 export const OFFERS_SOURCE = "offers";
+/** Source of the clinic manager's own facts (lib/clinic-setup.ts), added to every rebuild. */
+export const OWN_SOURCE = "own";
 
 // ---- sites ----
 
@@ -132,9 +139,17 @@ export function setFormerDoctors(clinicId: number, raw: unknown) {
 
 // ---- storage ----
 
-type Row = { id: number; status: LegendStatus; version: number | null; facts: string; pages: string; error: string | null; created_at: number; updated_at: number; approved_at: number | null };
+type Row = {
+  id: number; status: LegendStatus; version: number | null; facts: string; pages: string; error: string | null; created_at: number; updated_at: number; approved_at: number | null;
+  origin?: string; author?: string; note?: string;
+};
 const toLegend = (r: Row | undefined): Legend | null =>
-  r ? { id: r.id, status: r.status, version: r.version, facts: JSON.parse(r.facts), pages: JSON.parse(r.pages), error: r.error, createdAt: r.created_at, updatedAt: r.updated_at, approvedAt: r.approved_at } : null;
+  r
+    ? {
+        id: r.id, status: r.status, version: r.version, facts: JSON.parse(r.facts), pages: JSON.parse(r.pages), error: r.error, createdAt: r.created_at, updatedAt: r.updated_at,
+        approvedAt: r.approved_at, origin: (r.origin ?? "owner") as LegendOrigin, author: r.author ?? "", note: r.note ?? "",
+      }
+    : null;
 
 /** The version trainings use. */
 export function approvedLegend(clinicId: number): Legend | null {
@@ -148,8 +163,8 @@ export function workingLegend(clinicId: number): Legend | null {
 
 export function legendHistory(clinicId: number) {
   return db()
-    .prepare("SELECT id, status, version, approved_at AS approvedAt, json_array_length(facts) AS facts FROM legends WHERE clinic_id = ? AND status IN ('approved', 'archived') ORDER BY version DESC")
-    .all(clinicId) as { id: number; status: LegendStatus; version: number; approvedAt: number; facts: number }[];
+    .prepare("SELECT id, status, version, approved_at AS approvedAt, json_array_length(facts) AS facts, origin, author, note FROM legends WHERE clinic_id = ? AND status IN ('approved', 'archived') ORDER BY version DESC")
+    .all(clinicId) as { id: number; status: LegendStatus; version: number; approvedAt: number; facts: number; origin: LegendOrigin; author: string; note: string }[];
 }
 
 export function cleanFacts(raw: unknown): Fact[] {
@@ -160,7 +175,7 @@ export function cleanFacts(raw: unknown): Fact[] {
     const text = String((f as Fact)?.text ?? "").replace(/\s+/g, " ").trim().slice(0, 400);
     if (!SECTION_KEYS.includes(section) || !text) continue;
     const src = (f as Fact)?.source;
-    const source = src === OFFERS_SOURCE ? OFFERS_SOURCE : typeof src === "string" && /^https?:\/\//.test(src) ? src.slice(0, 500) : null;
+    const source = src === OFFERS_SOURCE || src === OWN_SOURCE ? src : typeof src === "string" && /^https?:\/\//.test(src) ? src.slice(0, 500) : null;
     out.push({ section, text, source });
   }
   return out;
@@ -182,8 +197,8 @@ export function saveDraft(clinicId: number, rawFacts: unknown): Legend {
   return workingLegend(clinicId)!;
 }
 
-/** The draft becomes the next approved version; the previous approved version is archived. */
-export function approveDraft(clinicId: number, rawFacts?: unknown): Legend {
+/** The draft becomes the next approved version; the previous approved version is archived. `by` names who approved it. */
+export function approveDraft(clinicId: number, rawFacts?: unknown, by?: { author: string; note?: string }): Legend {
   if (rawFacts !== undefined) saveDraft(clinicId, rawFacts);
   const working = workingLegend(clinicId);
   if (!working || working.status !== "draft") throw new Error("Нет черновика для утверждения");
@@ -195,6 +210,7 @@ export function approveDraft(clinicId: number, rawFacts?: unknown): Legend {
   try {
     conn.prepare("UPDATE legends SET status = 'archived' WHERE clinic_id = ? AND status = 'approved'").run(clinicId);
     conn.prepare("UPDATE legends SET status = 'approved', version = ?, approved_at = ?, updated_at = ? WHERE id = ?").run(next, now, now, working.id);
+    if (by) conn.prepare("UPDATE legends SET author = ?, note = ? WHERE id = ?").run(by.author.slice(0, 120), (by.note ?? "").slice(0, 300), working.id);
     conn.exec("COMMIT");
   } catch (e) {
     conn.exec("ROLLBACK");
@@ -258,7 +274,11 @@ export async function extractFacts(pages: Page[], clinicName: string): Promise<F
 }
 
 /** Starts reading the sites and drafting facts in the background; the working copy shows "analyzing" until it ends. */
-export function startAnalysis(clinicId: number, deps = { readSites, extractFacts }): Legend {
+export function startAnalysis(
+  clinicId: number,
+  deps = { readSites, extractFacts },
+  opts: { origin?: LegendOrigin; author?: string; onDraft?: () => void } = {},
+): Legend {
   const clinic = db().prepare("SELECT legal_name, sites, offers FROM clinics WHERE id = ?").get(clinicId) as { legal_name: string; sites: string; offers: string } | undefined;
   if (!clinic) throw new Error("Клиника не найдена");
   const sites = JSON.parse(clinic.sites) as Site[];
@@ -266,7 +286,9 @@ export function startAnalysis(clinicId: number, deps = { readSites, extractFacts
   if (workingLegend(clinicId)?.status === "analyzing") throw new Error("Анализ уже идёт");
   discardDraft(clinicId);
   const now = Date.now();
-  const id = Number(db().prepare("INSERT INTO legends (clinic_id, status, created_at, updated_at) VALUES (?, 'analyzing', ?, ?)").run(clinicId, now, now).lastInsertRowid);
+  const id = Number(
+    db().prepare("INSERT INTO legends (clinic_id, status, origin, author, created_at, updated_at) VALUES (?, 'analyzing', ?, ?, ?, ?)").run(clinicId, opts.origin ?? "owner", opts.author ?? "", now, now).lastInsertRowid,
+  );
 
   void (async () => {
     let pages: Page[] = [];
@@ -275,6 +297,7 @@ export function startAnalysis(clinicId: number, deps = { readSites, extractFacts
       if (clinic.offers) pages.push(offersPage(clinic.offers));
       const facts = await deps.extractFacts(pages, clinic.legal_name);
       db().prepare("UPDATE legends SET status = 'draft', facts = ?, pages = ?, updated_at = ? WHERE id = ?").run(JSON.stringify(facts), JSON.stringify(pages.map(({ text: _t, ...p }) => p)), Date.now(), id);
+      opts.onDraft?.();
     } catch (e) {
       console.error("[legend]", e);
       db().prepare("UPDATE legends SET status = 'failed', pages = ?, error = ?, updated_at = ? WHERE id = ?").run(
