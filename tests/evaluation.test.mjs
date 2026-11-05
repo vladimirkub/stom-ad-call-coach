@@ -50,3 +50,10 @@ test("a patient's judge note reaches the judge even without a condition of the d
   const scenario = { name: "Денис", age: 38, lead: "-", hiddenObjection: "-", showUpRisk: "-", judgeNote: "ОСОБЕННОСТЬ ЗВОНКА: пациент ошибся клиникой." };
   assert.match(evaluationPrompt({ scenario, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] }), /ОСОБЕННОСТЬ ЗВОНКА: пациент ошибся клиникой\./);
 });
+
+test("patients with a toothache to sort out give the judge the clinic's symptom table", () => {
+  const scenario = { name: "Павел", age: 31, lead: "-", hiddenObjection: "-", showUpRisk: "-", triage: true };
+  const p = evaluationPrompt({ scenario, memo: [], transcript: [{ role: "user", text: "Здравствуйте" }] });
+  assert.match(p, /ТАБЛИЦА ПЕРВИЧНОЙ ДИАГНОСТИКИ КЛИНИКИ/);
+  assert.match(p, /Периодонтит — Да, распирание/);
+});

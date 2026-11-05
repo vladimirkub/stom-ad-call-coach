@@ -17,6 +17,7 @@ import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
 import { INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
 import { PatientRecord, type TreatmentRecord } from "../../patient-record";
+import { TriageHint } from "../../triage-hint";
 
 type Mode = "idle" | "voice" | "text";
 
@@ -343,6 +344,12 @@ function Call({ id }: { id: string }) {
           )}
         </Panel>
       </div>
+
+      {"triage" in scenario && scenario.triage && (
+        <div className="mt-3">
+          <TriageHint />
+        </div>
+      )}
 
       {variant && withRecord && (
         <div className="mt-3">
