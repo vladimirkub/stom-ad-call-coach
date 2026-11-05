@@ -6,6 +6,7 @@ import { PageHeader, Shell } from "../ui";
 import { StatsPanel, StatsScope, type StatsView } from "../admin/stats";
 import { ClinicSettings } from "./settings";
 import { ClinicSetup } from "./setup";
+import { TeamAccess } from "./team-access";
 
 // The clinic manager's cabinet: their team's statistics, each administrator and each call, PDF reports; and the
 // clinic's settings (directions, legend facts) sent to Stom AD for approval. Only their own clinic: the data comes
@@ -17,6 +18,8 @@ export default function ClinicCabinet() {
   const [tab, setTab] = useState<"team" | "settings">("team");
   // Autonomous clinics set themselves up (lib/clinic-setup.ts); the others propose changes to Stom AD.
   const [manual, setManual] = useState(false);
+  // Bumped when the team changes, so the statistics below reload with the new list.
+  const [teamVersion, setTeamVersion] = useState(0);
   if (auth.status !== "user") return null;
   const { user } = auth;
   if (user.role !== "manager" || !user.clinic) {
@@ -62,9 +65,12 @@ export default function ClinicCabinet() {
         ))}
       </div>
       {tab === "team" ? (
-        <StatsScope api="/api/clinic" overview={false}>
-          <StatsPanel nav={nav ?? home} go={go} />
-        </StatsScope>
+        <div className="flex flex-col gap-5">
+          <StatsScope api="/api/clinic" overview={false}>
+            <StatsPanel key={teamVersion} nav={nav ?? home} go={go} />
+          </StatsScope>
+          {(nav ?? home).view === "clinic" && <TeamAccess onChanged={() => setTeamVersion((v) => v + 1)} />}
+        </div>
       ) : (
         manual ? <ClinicSettings /> : <ClinicSetup onManual={() => setManual(true)} />
       )}

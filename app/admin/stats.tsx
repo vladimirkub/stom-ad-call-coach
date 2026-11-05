@@ -282,7 +282,7 @@ function ClinicView({ id, go }: { id: number; go: (v: StatsView) => void }) {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {users.filter((u) => u.active || overview).map((u) => (
                   <tr key={u.id} onClick={() => go({ view: "user", id: u.id })} className={`cursor-pointer border-t border-white/[0.06] transition hover:bg-white/[0.04] ${u.active ? "" : "text-slate-500"}`}>
                     <td className="px-5 py-3">
                       <button type="button" className="text-left font-medium hover:text-accent" onClick={(e) => { e.stopPropagation(); go({ view: "user", id: u.id }); }}>
