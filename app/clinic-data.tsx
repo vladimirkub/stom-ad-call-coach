@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type ClinicData = { legendVersion: number | null; memo: string[]; leads: Record<string, string> };
+export type ClinicData = { legendVersion: number | null; memo: string[]; leads: Record<string, string>; firstLines?: Record<string, string> };
 
 // One request per page load, shared by every component that needs the clinic's memo or patient cards.
 let pending: Promise<ClinicData | null> | null = null;

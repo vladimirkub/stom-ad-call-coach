@@ -15,8 +15,10 @@ test("every variant has the truth for the patient and the judge, and a record wh
     for (const v of s.variants) {
       // Patients either have a record in every variant (a claim checked in the base) or in none (Natalia's openers).
       assert.equal(!!v.record, !!s.variants[0].record, `${s.id}.${v.id}`);
-      if (v.record) assert.ok(v.record.visits.length > 0 && v.record.rules.length > 20, `${s.id}.${v.id}`);
-      assert.ok(priv[s.id].variants[v.id].patient.length > 50 && priv[s.id].variants[v.id].judge.length > 50, `${s.id}.${v.id}`);
+      // A panel of its own (Gleb asks the staff) holds just their answer, which the patient does not know.
+      if (v.record) assert.ok((s.recordPanel || v.record.visits.length > 0) && v.record.rules.length > 20, `${s.id}.${v.id}`);
+      if (!s.recordPanel) assert.ok(priv[s.id].variants[v.id].patient.length > 50, `${s.id}.${v.id}`);
+      assert.ok(priv[s.id].variants[v.id].judge.length > 50, `${s.id}.${v.id}`);
     }
   }
 });
@@ -35,7 +37,7 @@ test("the call variant reaches the patient's situation and the judge; an unknown
   assert.match(opened, /ВАРИАНТ ЗВОНКА: жалоба совпадает/);
   assert.match(opened, /Зуб 36: нижняя челюсть, слева/);
   assert.match(opened, /после своей реплики номер 2/);
-  assert.match(evaluationPrompt({ scenario: match, memo: [], transcript }), /карту в базе НЕ открывал/);
+  assert.match(evaluationPrompt({ scenario: match, memo: [], transcript }), /панель НЕ открывал/);
 });
 
 test("the treating doctor comes from the clinic's legend, by the complaint's specialty", async () => {
@@ -55,4 +57,15 @@ test("the treating doctor comes from the clinic's legend, by the complaint's spe
   assert.equal(record.visits[0].doctor, "Колесников Евгений Игоревич");
   assert.match(record.rules, /Колесников Евгений Игоревич сегодня не принимает/);
   assert.match(getScenario("sergey", ctx, "inbound", "root_canal").prompt, /Ли Марк лечил\(а\) тебе каналы/);
+});
+
+test("the late patient's slot, panel answer and judge note follow the clinic's closing time", () => {
+  const ctx = { ...clinicContext(null), facts: [{ section: "contacts", text: "Пн–Пт 9:00–21:00, Сб–Вс 10:00–18:00" }] };
+  const s = getScenario("gleb", ctx, "outbound", "cannot");
+  assert.match(s.firstMessage, /свободное время на 20:20/);
+  assert.match(s.firstMessage, /работаете до 21:00/);
+  assert.match(s.prompt, /закрывается в 21:00; последнее свободное окно в онлайн-записи — 20:20/);
+  assert.match(s.variant.record.rules, /после закрытия \(21:00\)/);
+  assert.match(s.judgeNote, /\(20:20, клиника закрывается в 21:00\)/);
+  assert.doesNotMatch(JSON.stringify([s.firstMessage, s.prompt, s.judgeNote, s.variant]), /\{\{(slot|close|late)\}\}/);
 });

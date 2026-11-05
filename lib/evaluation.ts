@@ -14,14 +14,14 @@ type ScenarioContext = {
 /** The treatment record the administrator could open, and whether they did, for a variant call. */
 function recordText(v: NonNullable<ScenarioContext["variant"]>, openedAfter: number | null) {
   const visits = (v.record?.visits ?? []).map((x) => `- ${x.date}: ${x.work}; ${x.tooth}${x.doctor ? `; врач: ${x.doctor}` : ""}${x.warranty ? `; гарантия: ${x.warranty}` : ""}`).join("\n");
-  const opened = openedAfter === null ? "Оператор карту в базе НЕ открывал." : openedAfter === 0 ? "Оператор открыл карту в базе до своей первой реплики." : `Оператор открыл карту в базе после своей реплики номер ${openedAfter} (считая только реплики оператора).`;
+  const opened = openedAfter === null ? "Оператор эту панель НЕ открывал." : openedAfter === 0 ? "Оператор открыл панель до своей первой реплики." : `Оператор открыл панель после своей реплики номер ${openedAfter} (считая только реплики оператора).`;
   return `
 ${v.judge}
-Карта пациента в базе клиники, которую оператор мог открыть на экране:
+Панель, которую оператор мог открыть на экране (карта пациента в базе клиники или ответ сотрудников):
 ${v.record?.patient ?? ""}
 ${visits}
 ${v.record?.rules ?? ""}
-${opened} Сверял ли он жалобу с картой, оценивай по тому, что он говорил пациенту.`;
+${opened} Как он использовал её содержание, оценивай по тому, что он говорил пациенту.`;
 }
 
 /** Who called whom, as the judge reads it. */

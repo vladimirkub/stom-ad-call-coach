@@ -3,6 +3,7 @@ import pub from "./scenarios-public.json" with { type: "json" };
 import priv from "./scenarios-private.json" with { type: "json" };
 import { patientPrompt } from "./patient-behavior.ts";
 import { clinicContext, clinicDoctor, personaVars, type ClinicContext } from "./clinic-context.ts";
+import { fillHours } from "./clinic-hours.ts";
 import type { CallDirection } from "./direction.ts";
 
 /**
@@ -13,7 +14,8 @@ import type { CallDirection } from "./direction.ts";
 type Variant = { patient: string; judge: string; specialty?: string; urgent?: boolean };
 type Visit = { date: string; work: string; tooth: string; warranty?: string; doctor?: string };
 export type TreatmentRecord = { patient: string; visits: Visit[]; rules: string };
-type Private = { voiceId: string; prompt: string; judgeNote?: string; variants?: Record<string, Variant> };
+/** today: what the patient knows about today that the fit must not rewrite, such as the late slot ("{{slot}}"). */
+type Private = { voiceId: string; prompt: string; judgeNote?: string; today?: string; variants?: Record<string, Variant> };
 
 export const scenarioIds = pub.map((s) => s.id);
 
@@ -27,7 +29,8 @@ function pickVariant(secret: Private, variant: unknown, ctx: ClinicContext): ({ 
   const id = typeof variant === "string" && ids.includes(variant) ? variant : ids[0];
   const v = secret.variants![id];
   const doctor = clinicDoctor(ctx, v.specialty);
-  return { id, doctor, ...v, patient: v.patient.replaceAll("{{doctor}}", doctor), judge: v.judge.replaceAll("{{doctor}}", doctor) };
+  const fill = (text: string) => fillHours(text.replaceAll("{{doctor}}", doctor), ctx);
+  return { id, doctor, ...v, patient: fill(v.patient), judge: fill(v.judge) };
 }
 
 /** The clinic's record for this call variant, with the treating doctor filled in; null when there is none. */
@@ -36,14 +39,21 @@ export function scenarioRecord(ctx: ClinicContext, id: string, variant: unknown)
   const v = pickVariant((priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" }, variant, ctx);
   const record = v && open && "variants" in open ? ((open.variants as { id: string; record?: TreatmentRecord }[] | undefined)?.find((x) => x.id === v.id)?.record) : undefined;
   if (!v || !record) return null;
-  return JSON.parse(JSON.stringify(record).replaceAll("{{doctor}}", v.doctor)) as TreatmentRecord;
+  return JSON.parse(fillHours(JSON.stringify(record).replaceAll("{{doctor}}", v.doctor), ctx)) as TreatmentRecord;
 }
 
 /** The patient's dynamic variables for this clinic, direction and call variant (text fills them in, voice passes them). */
 export function scenarioVars(ctx: ClinicContext, id: string, direction: CallDirection = "outbound", variant?: unknown) {
   const vars = personaVars(ctx, id, direction);
-  const v = pickVariant((priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" }, variant, ctx);
-  return v ? { ...vars, situation: `${vars.situation}\n\n${v.patient}` } : vars;
+  const secret = (priv as Record<string, Private>)[id] ?? { voiceId: "", prompt: "" };
+  const v = pickVariant(secret, variant, ctx);
+  const situation = [vars.situation, secret.today && fillHours(secret.today, ctx), v?.patient].filter(Boolean).join("\n\n");
+  return { ...vars, situation };
+}
+
+/** The patient's opening line for this clinic (the late patient names its last slot). */
+export function firstLine(ctx: ClinicContext, id: string): string {
+  return fillHours(pub.find((s) => s.id === id)?.firstMessage ?? "", ctx);
 }
 
 /** A patient as this clinic's trainees meet them (the shared demo clinic when `ctx` is omitted). */
@@ -56,12 +66,13 @@ export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null
   const record = v ? (scenarioRecord(ctx, open.id, v.id) ?? undefined) : undefined;
   return {
     ...open,
+    firstMessage: firstLine(ctx, open.id),
     voiceId: secret.voiceId,
     lead: fit.lead,
     hiddenObjection: fit.hiddenObjection,
     showUpRisk: fit.showUpRisk,
     // How the judge should score this patient's condition of the day; kept off the trainee's pages.
-    judgeNote: secret.judgeNote,
+    judgeNote: secret.judgeNote && fillHours(secret.judgeNote, ctx),
     // This call's variant: the record the administrator saw and the truth behind the complaint, for the judge.
     variant: v && { id: v.id, judge: v.judge, urgent: !!v.urgent, record },
     prompt: patientPrompt(secret.prompt, scenarioVars(ctx, open.id, direction, v?.id)),

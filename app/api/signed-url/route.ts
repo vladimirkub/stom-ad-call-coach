@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/ratelimit";
-import { scenarioIds, scenarioVars } from "@/lib/scenarios";
+import { firstLine, scenarioIds, scenarioVars } from "@/lib/scenarios";
 import { agentIdFor, conversationTokenFor } from "@/lib/agents";
 import { currentClinicContext } from "@/lib/session";
 import { parseDirection } from "@/lib/direction";
-import pub from "@/lib/scenarios-public.json";
 
 export async function GET(req: Request) {
   const limited = rateLimit(req, "voice", 10);
@@ -28,9 +27,10 @@ export async function GET(req: Request) {
     if (!body.signed_url) return NextResponse.json({ error: "ElevenLabs не вернул signed URL" }, { status: 502 });
     // The agent prompt keeps {{situation}}, {{concerns}}, {{site_facts}} and {{call_direction}} open; the call fills them
     // for this clinic and direction. On an inbound call the first line is empty: the patient waits for the administrator.
+    const ctx = await currentClinicContext();
     const dynamicVariables = {
-      ...scenarioVars(await currentClinicContext(), scenario, direction, q.get("variant")),
-      first_line: direction === "inbound" ? "" : (pub.find((s) => s.id === scenario)?.firstMessage ?? ""),
+      ...scenarioVars(ctx, scenario, direction, q.get("variant")),
+      first_line: direction === "inbound" ? "" : firstLine(ctx, scenario),
     };
     return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId), dynamicVariables });
   } catch {

@@ -16,7 +16,7 @@ import { context, initials, patientNumber, quote, years } from "../../patient-gr
 import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
 import { INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
-import { PatientRecord, type TreatmentRecord } from "../../patient-record";
+import { PatientRecord, type RecordPanelLabels, type TreatmentRecord } from "../../patient-record";
 import { TriageHint } from "../../triage-hint";
 
 type Mode = "idle" | "voice" | "text";
@@ -165,7 +165,7 @@ function Call({ id }: { id: string }) {
     setError(null);
     setVoiceDown(false);
     // Inbound: the administrator picks up and writes first.
-    setTranscript(inbound ? [] : [{ role: "agent", text: scenario.firstMessage }]);
+    setTranscript(inbound ? [] : [{ role: "agent", text: clinicData?.firstLines?.[id] ?? scenario.firstMessage }]);
     beginAttempt();
     setMode("text");
   }
@@ -353,7 +353,12 @@ function Call({ id }: { id: string }) {
 
       {variant && withRecord && (
         <div className="mt-3">
-          <PatientRecord record={record} open={recordOpenedAfter !== null} onOpen={openRecord} />
+          <PatientRecord
+            record={record}
+            open={recordOpenedAfter !== null}
+            onOpen={openRecord}
+            labels={"recordPanel" in scenario ? (scenario.recordPanel as RecordPanelLabels) : undefined}
+          />
         </div>
       )}
 
