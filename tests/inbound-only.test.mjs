@@ -12,3 +12,13 @@ test("patients 14–23 call the clinic themselves: never an outbound call", () =
   assert.equal(servesDirection("gleb", "inbound"), true);
   assert.equal(servesDirection("kirill", "outbound"), true);
 });
+
+test("the patient with three cancellations is only ever called back", async () => {
+  const { OUTBOUND_ONLY, fixedDirection } = await import("../lib/direction.ts");
+  assert.deepEqual([...OUTBOUND_ONLY], ["konstantin", "artur"]);
+  assert.equal(fixedDirection("konstantin"), "outbound");
+  assert.equal(callDirection("konstantin", "inbound"), "outbound");
+  assert.equal(servesDirection("konstantin", "inbound"), false);
+  assert.equal(servesDirection("konstantin", "outbound"), true);
+  assert.equal(fixedDirection("marina"), null);
+});

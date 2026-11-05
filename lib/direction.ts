@@ -9,6 +9,13 @@ export type CallDirection = "outbound" | "inbound";
 
 /** Patients who only ever call the clinic themselves. */
 export const INBOUND_ONLY: ReadonlySet<string> = new Set(pub.filter((s) => "inboundOnly" in s && s.inboundOnly).map((s) => s.id));
+/** Patients the clinic only ever calls back ("outboundOnly"): their story is a callback on their own request. */
+export const OUTBOUND_ONLY: ReadonlySet<string> = new Set(pub.filter((s) => "outboundOnly" in s && s.outboundOnly).map((s) => s.id));
+
+/** The one direction this patient's calls always go, or null when the administrator chooses. */
+export function fixedDirection(scenarioId: string): CallDirection | null {
+  return INBOUND_ONLY.has(scenarioId) ? "inbound" : OUTBOUND_ONLY.has(scenarioId) ? "outbound" : null;
+}
 
 export const DIRECTIONS: { key: CallDirection; label: string; hint: string }[] = [
   { key: "outbound", label: "Исходящий", hint: "Перезваниваете по заявке" },
@@ -19,14 +26,15 @@ export function parseDirection(raw: unknown): CallDirection {
   return raw === "inbound" ? "inbound" : "outbound";
 }
 
-/** The direction of a call with this patient: the one asked for, except that inbound-only patients always call in. */
+/** The direction of a call with this patient: the one asked for, unless the patient only takes calls one way. */
 export function callDirection(scenarioId: unknown, raw: unknown): CallDirection {
-  return typeof scenarioId === "string" && INBOUND_ONLY.has(scenarioId) ? "inbound" : parseDirection(raw);
+  return (typeof scenarioId === "string" && fixedDirection(scenarioId)) || parseDirection(raw);
 }
 
 /** Whether this patient takes calls in this direction (the grid and /call leave the others out). */
 export function servesDirection(scenarioId: string, direction: CallDirection): boolean {
-  return direction === "inbound" || !INBOUND_ONLY.has(scenarioId);
+  const fixed = fixedDirection(scenarioId);
+  return !fixed || fixed === direction;
 }
 
 /**

@@ -7,7 +7,8 @@ import type { CallDirection } from "@/lib/direction";
 import { Check } from "./icons";
 
 /** How many items the live checklist shows for a call in this direction. */
-export const checklistTotal = (direction: CallDirection) => modelRubric(false, direction).length;
+/** Skills a call does not train (booking and show-up when the goal is an agreement) stay off the live checklist. */
+export const checklistTotal = (direction: CallDirection, skip: readonly string[] = []) => modelRubric(false, direction).filter((r) => !skip.includes(r.skill)).length;
 
 /**
  * Re-checks the transcript after each new operator line (debounced, one request at a time).
@@ -53,11 +54,11 @@ export function useLiveChecklist(scenarioId: string, transcript: Turn[], active:
   return { done, checking };
 }
 
-export function LiveChecklist({ done, checking, direction, className = "" }: { done: Set<string>; checking: boolean; direction: CallDirection; className?: string }) {
+export function LiveChecklist({ done, checking, direction, skip = [], className = "" }: { done: Set<string>; checking: boolean; direction: CallDirection; skip?: readonly string[]; className?: string }) {
   const rubric = modelRubric(false, direction);
   return (
     <div className={className}>
-      {SKILLS.map((s) => {
+      {SKILLS.filter((s) => !skip.includes(s.key)).map((s) => {
         const items = rubric.filter((r) => r.skill === s.key);
         const n = items.filter((i) => done.has(i.id)).length;
         return (

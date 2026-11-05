@@ -78,6 +78,12 @@ export async function POST(req: Request) {
       const item = checklist.find((c) => c.id === "onTime");
       if (item) item.evidence = !ev.appointmentBooked ? "пациент не записан" : attempt.mode === "voice" ? `звонок длился ${Math.floor((attempt.durationS ?? 0) / 60)}:${String((attempt.durationS ?? 0) % 60).padStart(2, "0")}` : `понадобилось реплик: ${replies}`;
     }
+    // A call whose goal is an agreement, not a visit (the patient who keeps not showing up): booking is not counted.
+    if (scenario && "noBooking" in scenario && scenario.noBooking) {
+      for (const c of checklist) {
+        if (((URGENT_SKIP_SKILLS as readonly string[]).includes(c.skill) || c.id === "onTime") && !c.done) Object.assign(c, { cutOff: true, evidence: "не требовалось: цель звонка — договорённость, а не запись" });
+      }
+    }
 
     const scores = skillScores(checklist);
     const result: EvaluationResult = {

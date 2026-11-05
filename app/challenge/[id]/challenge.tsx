@@ -15,7 +15,7 @@ import { LiveChecklist, checklistTotal, useLiveChecklist } from "../../live-chec
 import { context, initials, patientNumber, quote, years } from "../../patient-grid";
 import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
-import { INBOUND_ONLY, INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
+import { INBOUND_START_NOTE, fixedDirection, type CallDirection } from "@/lib/direction";
 import { PatientRecord, type RecordPanelLabels, type TreatmentRecord } from "../../patient-record";
 import { TriageHint } from "../../triage-hint";
 
@@ -47,8 +47,9 @@ function Call({ id }: { id: string }) {
   // Callback on a request or the patient's own call (lib/direction.ts); fixed once the call starts.
   // A patient whose story is their own call (Viktor's claim, Denis's wrong number, the symptoms) only ever calls in.
   const [chosen, setDirection] = useDirection();
-  const inboundOnly = INBOUND_ONLY.has(id);
-  const direction: CallDirection = inboundOnly ? "inbound" : chosen;
+  // Or the other way: the clinic only ever calls this patient back (the patient with three cancellations).
+  const fixed = fixedDirection(id);
+  const direction: CallDirection = fixed ?? chosen;
   const inbound = direction === "inbound";
   // On an inbound call the administrator does not know who is calling: the name shows up only in the results.
   const patientLabel = inbound ? "Пациент" : scenario.short;
@@ -128,7 +129,7 @@ function Call({ id }: { id: string }) {
   }, [transcript]);
 
   async function startVoice(asked: CallDirection = direction) {
-    const dir: CallDirection = inboundOnly ? "inbound" : asked;
+    const dir: CallDirection = fixed ?? asked;
     setError(null);
     setVoiceDown(false);
     setBusy(true);
@@ -159,7 +160,7 @@ function Call({ id }: { id: string }) {
     if (autoStarted.current || q.get("start") !== "voice") return;
     autoStarted.current = true;
     const dir: CallDirection = q.get("dir") === "inbound" ? "inbound" : "outbound";
-    if (!inboundOnly) setDirection(dir);
+    if (!fixed) setDirection(dir);
     router.replace(`/challenge/${id}`);
     void startVoice(dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,7 +242,10 @@ function Call({ id }: { id: string }) {
 
   const live = mode !== "idle";
   const { done, checking } = useLiveChecklist(id, transcript, live && !finishing, direction);
-  const total = checklistTotal(direction);
+  // A call whose goal is an agreement, not a visit (scenarios-public.json "noBooking"): no booking or show-up items.
+  const noBooking = "noBooking" in scenario && !!scenario.noBooking;
+  const skipSkills = noBooking ? ["booking", "showUp"] : [];
+  const total = checklistTotal(direction, skipSkills);
   // On phones the patient's voice from the speaker reaches the microphone and echo cancellation often misses it: the
   // patient then hears herself as the operator and keeps interrupting herself. So on touch devices the call is
   // half-duplex: the microphone is off while the patient speaks and comes back a moment after she stops.
@@ -340,7 +344,11 @@ function Call({ id }: { id: string }) {
         <Panel delay={140} tone="accent" innerClassName="h-full p-4">
           <p className="flex items-center gap-1.5 text-xs font-medium text-accent"><Target className="h-3.5 w-3.5" />Ваша цель</p>
           <p className="mt-1 text-sm leading-relaxed text-pretty text-slate-300">
-            {inbound ? "Вы администратор. Ответьте на звонок, запишите пациента на приём, возьмите телефон и убедитесь, что он придёт." : "Вы оператор. Запишите пациента на приём и убедитесь, что он придёт."}
+            {noBooking
+              ? "Вы администратор и звоните сами. Объясните, зачем звоните, и договоритесь с пациентом: запись не обязательна."
+              : inbound
+                ? "Вы администратор. Ответьте на звонок, запишите пациента на приём, возьмите телефон и убедитесь, что он придёт."
+                : "Вы оператор. Запишите пациента на приём и убедитесь, что он придёт."}
           </p>
           {/* A patient may come with a condition of the clinic's day, such as no free slots today (lib/scenarios-public.json). */}
           {"condition" in scenario && scenario.condition && (
@@ -390,16 +398,20 @@ function Call({ id }: { id: string }) {
             <span className="text-xs text-slate-500 group-open:hidden">Открыть</span>
             <span className="hidden text-xs text-slate-500 group-open:inline">Свернуть</span>
           </summary>
-          <LiveChecklist done={done} checking={checking} direction={direction} className="mt-3" />
+          <LiveChecklist done={done} checking={checking} direction={direction} skip={skipSkills} className="mt-3" />
         </details>
 
         <div className="flex min-w-0 flex-col">
           {error && <div role="alert" className="alert alert-error mb-3">{error}</div>}
 
-          {!live && !inboundOnly && <DirectionSwitch value={direction} onChange={setDirection} className="rise mb-3" />}
-          {!live && inboundOnly && (
+          {!live && !fixed && <DirectionSwitch value={direction} onChange={setDirection} className="rise mb-3" />}
+          {!live && fixed && (
             <p className="rise mb-3 rounded-full bg-white/[0.04] px-4 py-2 text-center text-xs text-slate-400 ring-1 ring-inset ring-white/[0.08]">
-              <span className="font-semibold text-slate-200">Только входящий звонок</span> · этот пациент сам звонит в клинику
+              {fixed === "inbound" ? (
+                <><span className="font-semibold text-slate-200">Только входящий звонок</span> · этот пациент сам звонит в клинику</>
+              ) : (
+                <><span className="font-semibold text-slate-200">Только исходящий звонок</span> · {noBooking ? "вы сами звоните пациенту" : "вы перезваниваете пациенту по его заявке"}</>
+              )}
             </p>
           )}
           {!live && (
@@ -499,7 +511,7 @@ function Call({ id }: { id: string }) {
               <div className="mt-2.5 h-1 rounded-full bg-white/[0.06]">
                 <div className="h-1 rounded-full bg-accent transition-[width] duration-700 ease-[var(--ease-spring)]" style={{ width: `${(done.size / total) * 100}%` }} />
               </div>
-              <LiveChecklist done={done} checking={checking} direction={direction} className="mt-4" />
+              <LiveChecklist done={done} checking={checking} direction={direction} skip={skipSkills} className="mt-4" />
             </div>
           </div>
         </aside>

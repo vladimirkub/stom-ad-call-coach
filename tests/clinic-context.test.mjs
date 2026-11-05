@@ -87,6 +87,6 @@ test("a failed fit is reported and keeps the shared patients", async () => {
     throw new Error("Gemini недоступен");
   });
   await until(() => personaFitState(clinicId).status !== "pending");
-  assert.deepEqual({ status: personaFitState(clinicId).status, error: personaFitState(clinicId).error }, { status: "failed", error: "Не подстроено пациентов: 25. Gemini недоступен" });
+  assert.deepEqual({ status: personaFitState(clinicId).status, error: personaFitState(clinicId).error }, { status: "failed", error: "Не подстроено пациентов: 27. Gemini недоступен" });
   assert.equal(C.clinicContext(clinicId).personas.igor.situation, C.defaultPersonas().igor.situation);
 });
