@@ -12,7 +12,7 @@ import { Shell, Panel } from "../../ui";
 import { CallBar, CallTimer, MicButton, Status } from "../../call-ui";
 import { Book, ListCheck, Phone, Target } from "../../icons";
 import { LiveChecklist, checklistTotal, useLiveChecklist } from "../../live-checklist";
-import { context, initials, quote, years } from "../../patient-grid";
+import { context, initials, patientNumber, quote, years } from "../../patient-grid";
 import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
 import { INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
@@ -319,7 +319,7 @@ function Call({ id }: { id: string }) {
           {inbound ? <Phone className="h-6 w-6" /> : initials(scenario.name)}
         </span>
         <div className="min-w-0">
-          <p className="eyebrow">{inbound ? "Входящий звонок · номер не определён" : `${scenario.short}, ${years(scenario.age)} · ${scenario.tag}`}</p>
+          <p className="eyebrow">{inbound ? `Входящий звонок · номер не определён · пациент №${patientNumber(id)}` : `№${patientNumber(id)} · ${scenario.short}, ${years(scenario.age)} · ${scenario.tag}`}</p>
           <h1 className="mt-1 text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-4xl">{inbound ? "Пациент звонит в клинику" : quote(scenario.title)}</h1>
         </div>
       </header>

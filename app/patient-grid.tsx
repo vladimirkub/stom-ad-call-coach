@@ -40,7 +40,7 @@ export function GroupTabs() {
     ...PATIENT_GROUPS.map((g) => ({ key: g.key as GroupTab, label: g.label, hint: g.hint, count: scenarios.filter((s) => s.group === g.key).length })),
   ];
   return (
-    <div role="tablist" aria-label="Пациенты по типу возражения" className="-mx-1 flex w-0 min-w-[calc(100%+0.5rem)] gap-1 overflow-x-auto px-1 pb-0.5">
+    <div role="tablist" aria-label="Пациенты по типу возражения" className="-mx-1 flex w-0 min-w-[calc(100%+0.5rem)] gap-1 overflow-x-auto px-1 pb-0.5 lg:flex-wrap lg:overflow-visible">
       {tabs.map((t) => {
         const on = t.key === value;
         return (
@@ -66,6 +66,11 @@ export function years(n: number) {
   if (d === 1 && dd !== 11) return `${n} год`;
   if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return `${n} года`;
   return `${n} лет`;
+}
+
+/** A patient's number, 1 to N in the order of scenarios-public.json, shown with the name. */
+export function patientNumber(id: string) {
+  return scenarios.findIndex((s) => s.id === id) + 1;
 }
 
 export function initials(name: string) {
@@ -115,7 +120,7 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
                   {initials(s.name)}
                 </span>
                 <div className="min-w-0 leading-tight">
-                  <p className="truncate text-sm font-medium text-slate-100">{s.short}</p>
+                  <p className="truncate text-sm font-medium text-slate-100"><span className="tabular-nums text-slate-500">№{patientNumber(s.id)}</span> {s.short}</p>
                   <p className="text-xs text-slate-500">{years(s.age)}</p>
                 </div>
                 {last && (
