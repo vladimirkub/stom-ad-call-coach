@@ -144,6 +144,16 @@ export function resetPassword(userId: number): string {
   return password;
 }
 
+/** Corrects a clinic account's first and last name; the login stays as issued, so the access already sent still works. */
+export function renameUser(userId: number, input: { firstName: string; lastName: string }) {
+  const firstName = String(input.firstName ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+  const lastName = String(input.lastName ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+  if (!firstName || !lastName) throw new Error("Заполните имя и фамилию");
+  const r = db().prepare("UPDATE users SET first_name = ?, last_name = ? WHERE id = ? AND role IN ('trainee', 'manager')").run(firstName, lastName, userId);
+  if (!r.changes) throw new Error("Пользователь не найден");
+  return { firstName, lastName };
+}
+
 export function setActive(userId: number, active: boolean) {
   const r = db().prepare("UPDATE users SET active = ? WHERE id = ? AND role IN ('trainee', 'manager')").run(active ? 1 : 0, userId);
   if (!r.changes) throw new Error("Пользователь не найден");

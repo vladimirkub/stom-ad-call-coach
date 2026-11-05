@@ -96,3 +96,12 @@ test("the manager names the doctors who have left: a change on its own, applied 
   // Sending the same names again is not a change.
   assert.throws(() => P.propose(clinic, manager.id, { directions: getDirections(clinic), facts: current.facts, formerDoctors: ["Иванова Мария Петровна", "Орлов Игорь Петрович"] }), /Изменений нет/);
 });
+
+test("a clinic account's name can be corrected; the login stays", () => {
+  const u = auth.createTrainee({ clinicId: clinic, firstName: "Олга", lastName: "Смирнва" });
+  assert.deepEqual(auth.renameUser(u.id, { firstName: "  Ольга ", lastName: "Смирнова" }), { firstName: "Ольга", lastName: "Смирнова" });
+  const row = auth.listTrainees(clinic).find((x) => x.id === u.id);
+  assert.equal(`${row.lastName} ${row.firstName}`, "Смирнова Ольга");
+  assert.equal(row.login, u.login);
+  assert.throws(() => auth.renameUser(u.id, { firstName: "", lastName: "Смирнова" }), /имя и фамилию/);
+});

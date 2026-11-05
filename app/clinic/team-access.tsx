@@ -21,6 +21,8 @@ export function TeamAccess({ onChanged }: { onChanged: () => void }) {
   const [form, setForm] = useState({ firstName: "", lastName: "" });
   const [fresh, setFresh] = useState<{ login: string; password: string } | null>(null);
   const [showRemoved, setShowRemoved] = useState(false);
+  // The administrator whose name is being corrected, with the draft name.
+  const [renaming, setRenaming] = useState<{ id: number; firstName: string; lastName: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +51,20 @@ export function TeamAccess({ onChanged }: { onChanged: () => void }) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function rename(e: React.FormEvent) {
+    e.preventDefault();
+    if (!renaming) return;
+    setError("");
+    try {
+      await api(`/api/clinic/users/${renaming.id}`, { method: "POST", body: JSON.stringify({ action: "rename", firstName: renaming.firstName, lastName: renaming.lastName }) });
+      setRenaming(null);
+      await load();
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -114,12 +130,26 @@ export function TeamAccess({ onChanged }: { onChanged: () => void }) {
             <tbody>
               {active.map((u) => (
                 <tr key={u.id} className="border-t border-white/[0.06]">
-                  <td className="px-5 py-3">{u.lastName} {u.firstName}</td>
+                  <td className="px-5 py-3">
+                    {renaming?.id === u.id ? (
+                      <form onSubmit={rename} className="flex flex-wrap items-center gap-1.5">
+                        <input aria-label="Фамилия" className="field w-32 py-1.5 text-[13px]" value={renaming.lastName} maxLength={60} required autoFocus onChange={(e) => setRenaming({ ...renaming, lastName: e.target.value })} />
+                        <input aria-label="Имя" className="field w-28 py-1.5 text-[13px]" value={renaming.firstName} maxLength={60} required onChange={(e) => setRenaming({ ...renaming, firstName: e.target.value })} />
+                        <button type="submit" className={`${button} text-accent ring-accent/40`}>Сохранить</button>
+                        <button type="button" className={`${button} text-slate-400 ring-white/10`} onClick={() => setRenaming(null)}>Отмена</button>
+                      </form>
+                    ) : (
+                      <>{u.lastName} {u.firstName}</>
+                    )}
+                  </td>
                   <td className="px-3 py-3 font-mono text-[13px]">{u.login}</td>
                   <td className="px-3 py-3 font-mono text-[13px]">{u.password ?? "—"}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap justify-end gap-1.5">
                       <CopyButton text={accessText(u)} label="Скопировать" />
+                      <button type="button" className={`${button} text-slate-300 ring-white/10`} onClick={() => setRenaming({ id: u.id, firstName: u.firstName, lastName: u.lastName })}>
+                        Изменить имя
+                      </button>
                       <button type="button" className={`${button} text-slate-300 ring-white/10`} onClick={() => act(u, "reset")}>Новый пароль</button>
                       <button type="button" className={`${button} text-rose-300 ring-rose-400/30`} onClick={() => act(u, "remove")}>Удалить</button>
                     </div>

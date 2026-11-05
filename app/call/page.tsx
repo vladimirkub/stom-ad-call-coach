@@ -9,6 +9,7 @@ import { Brand } from "../ui";
 import { Phone } from "../icons";
 import { DirectionSwitch, useDirection } from "../direction-switch";
 import { servesDirection, type CallDirection } from "@/lib/direction";
+import { Leaderboard } from "./leaderboard";
 
 /** Fallback when the server cannot answer: the patient tried least often in this browser, never the last one. */
 function pickPatientHere(direction: CallDirection): string {
@@ -51,7 +52,7 @@ export default function SimpleCall() {
         <Brand />
       </nav>
 
-      <section className="flex flex-1 flex-col items-center justify-center gap-10 py-12 text-center">
+      <section className="flex flex-1 flex-col items-center justify-center gap-7 py-8 text-center">
         <DirectionSwitch value={direction} onChange={setDirection} className="rise w-full max-w-sm" />
 
         <button
@@ -59,14 +60,14 @@ export default function SimpleCall() {
           onClick={call}
           disabled={busy}
           aria-label={inbound ? "Входящий звонок" : "Звонок пациенту"}
-          className="rise group relative flex h-64 w-64 flex-col items-center justify-center gap-4 rounded-full bg-accent text-ink-950 transition duration-500 ease-[var(--ease-spring)] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-80 sm:h-72 sm:w-72"
+          className="rise group relative flex h-44 w-44 flex-col items-center justify-center gap-2.5 rounded-full bg-accent text-ink-950 transition duration-500 ease-[var(--ease-spring)] hover:scale-[1.03] active:scale-[0.97] disabled:opacity-80 sm:h-48 sm:w-48"
           style={{ animationDelay: "80ms" }}
         >
           <span aria-hidden className="ring-pulse absolute inset-0 rounded-full" />
-          <span className="flex h-20 w-20 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 ease-[var(--ease-spring)] group-hover:-rotate-12 group-hover:scale-105">
-            <Phone className="h-9 w-9" />
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ink-950/10 transition duration-500 ease-[var(--ease-spring)] group-hover:-rotate-12 group-hover:scale-105">
+            <Phone className="h-6 w-6" />
           </span>
-          <span className="max-w-[9ch] text-2xl leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-[1.75rem]">
+          <span className="max-w-[9ch] text-lg leading-tight font-semibold tracking-[-0.02em] text-balance sm:text-xl">
             {busy ? (inbound ? "Соединяем…" : "Набираем…") : inbound ? "Ответить на звонок" : "Звонок пациенту"}
           </span>
         </button>
@@ -76,6 +77,8 @@ export default function SimpleCall() {
             ? "Позвонит случайный пациент, который увидел рекламу или сайт. Возьмите трубку первым, узнайте имя и запрос, запишите на приём примерно за 3 минуты."
             : "Позвонит случайный пациент из тех, с кем вы говорили реже. Запишите его на приём примерно за 3 минуты. После звонка получите оценку."}
         </p>
+
+        <Leaderboard />
       </section>
     </main>
   );

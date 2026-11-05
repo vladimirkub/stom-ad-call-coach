@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { listTrainees, resetPassword, setActive } from "@/lib/auth";
+import { listTrainees, renameUser, resetPassword, setActive } from "@/lib/auth";
 import { requireManager } from "@/lib/session";
 
 // The manager acts on one administrator of their own clinic: { action: "reset" } issues a new password, "remove" closes
-// access (the person leaves the lists; past calls stay in the clinic's figures), "restore" gives it back.
+// access (the person leaves the lists; past calls stay in the clinic's figures), "restore" gives it back, "rename"
+// { firstName, lastName } corrects the name (the login stays).
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const gate = await requireManager();
   if ("denied" in gate) return gate.denied;
@@ -11,9 +12,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // Only the clinic's ordinary administrators: never another clinic's account, the manager or a technical one.
   const user = listTrainees(gate.manager.clinic.id).find((u) => u.id === id && !u.tech);
   if (!user) return NextResponse.json({ error: "Администратор не найден" }, { status: 404 });
-  const action = (await req.json().catch(() => null))?.action;
+  const body = await req.json().catch(() => null);
+  const action = body?.action;
   try {
     if (action === "reset") return NextResponse.json({ password: resetPassword(id) });
+    if (action === "rename") return NextResponse.json({ user: renameUser(id, { firstName: body?.firstName, lastName: body?.lastName }) });
     if (action === "remove" || action === "restore") {
       setActive(id, action === "restore");
       return NextResponse.json({ ok: true });
