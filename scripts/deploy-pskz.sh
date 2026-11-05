@@ -143,6 +143,6 @@ fi
 echo "== smoke test"
 # next start needs a few seconds after a restart; nginx answers 502 until then
 for _ in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://$IP/")" = 200 ] && break; sleep 1; done
-for path in / /app /calculator; do
+for path in / /app /call; do
   printf '%-14s %s\n' "$path" "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$IP$path")"
 done

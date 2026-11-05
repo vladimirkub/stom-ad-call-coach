@@ -20,7 +20,6 @@
 See `docs/benchmark.md`: 6 synthetic, anonymized calls of known quality (2 strong, 2 medium, 2 weak), each run twice through **bare Gemma 4** ("rate this call 0-100") and through **our layer** (clinic facts + 20-criteria checklist + deterministic scoring). Report the table from that file: tier separation, run-to-run spread, and whether invented/contradicting claims were flagged. Be explicit that n is small and the calls are synthetic.
 
 ### 2. Where does it not work?
-- Evaluation of real calls depends on speech recognition: numbers and names can be misheard, which can look like a "false claim". The UI warns about this and offers listening to the recording.
 - The evaluator is a language model: scores and advice can be wrong or noisy; one evaluation takes 30–60 s.
 - Voices are generic library voices; ages and emotions are approximate. Background noise can leak into the microphone without headphones.
 - The knowledge base is one shared JSON file with no access control and no real validation of "truth": a malicious caller could try to poison it (mitigated by filters and manual deletion, not eliminated).
@@ -33,4 +32,4 @@ Open the link, press **"Start"** on a patient, allow the microphone, talk. About
 ## Files judges may ask for
 - Where the expertise lives: `lib/rubric.ts` (21-criterion checklist), `lib/scenarios-private.json` + `lib/clinic.json` (patients, hidden objections, clinic facts), `lib/operator.ts` (operator playbook), `lib/kb.ts` (knowledge base).
 - Where the model is called: `lib/gemma.ts` (Gemma 4 through the Gemini API), used by `app/api/evaluate`, `chat`, `model-script`, `knowledge/learn`.
-- Where ElevenLabs is called: `scripts/create-agent.mjs` (agents), `app/api/signed-url` and `app/api/operator/start` (sessions), `lib/stt.ts` (Scribe v2).
+- Where ElevenLabs is called: `scripts/create-agent.mjs` (agents), `app/api/signed-url` and `app/api/operator/start` (sessions).

@@ -101,9 +101,9 @@ export function context(lead: string) {
   return lead.replace(/^[^.]*\d+\s+(год|года|лет)\.\s*/, "").replace(/(\d) (?=\d{3}\b|₽)/g, "$1\u00a0");
 }
 
-// Grid of patients followed by any extra cards (the workspace tools). On desktop it is 4×3 and fills the height its parent
+// Grid of patients. On desktop it is 4×3 and fills the height its parent
 // gives it, so the whole workspace fits one screen; each card shows as much description as its height allows (`fit-*` in globals.css).
-export default function PatientGrid({ children }: { children?: React.ReactNode }) {
+export default function PatientGrid() {
   const clinicData = useClinicData();
   const [direction] = useDirection();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -164,7 +164,6 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
           </Link>
         );
       })}
-      {tab === "all" && children}
     </div>
   );
 }

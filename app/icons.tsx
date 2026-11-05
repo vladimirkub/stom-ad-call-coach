@@ -43,15 +43,6 @@ export function Waveform({ className }: Props) {
   );
 }
 
-export function Calculator({ className }: Props) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="5" y="3" width="14" height="18" rx="3" />
-      <path d="M8.5 7.5h7M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01" />
-    </svg>
-  );
-}
-
 export function ArrowLeft({ className }: Props) {
   return (
     <svg {...base} className={className}>
@@ -97,30 +88,6 @@ export function Alert({ className }: Props) {
   return (
     <svg {...base} className={className}>
       <path d="M12 4 2.8 19.5h18.4L12 4ZM12 10v4.5M12 17.2h.01" />
-    </svg>
-  );
-}
-
-export function Play({ className }: Props) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M8 5.5v13l10.5-6.5L8 5.5Z" />
-    </svg>
-  );
-}
-
-export function Stop({ className }: Props) {
-  return (
-    <svg {...base} className={className}>
-      <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
-    </svg>
-  );
-}
-
-export function Upload({ className }: Props) {
-  return (
-    <svg {...base} className={className}>
-      <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3" />
     </svg>
   );
 }

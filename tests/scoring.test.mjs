@@ -51,17 +51,6 @@ test("schema rejects malformed evaluations and defaults optional lists", () => {
   assert.ok(!EvaluationSchema.safeParse({ ...ok, improvements: [] }).success);
 });
 
-import { parseTranscript } from "../lib/parse.ts";
-
-test("parseTranscript maps roles and joins continuation lines", () => {
-  const t = parseTranscript("Оператор: Добрый день\nэто Анна\nПациент - Слушаю\n\nКлиент: Да\nМусор: игнор");
-  assert.deepEqual(t, [
-    { role: "user", text: "Добрый день это Анна" },
-    { role: "agent", text: "Слушаю" },
-    { role: "agent", text: "Да Мусор: игнор" },
-  ]);
-});
-
 test("cut-off items are not counted; a skill with nothing left gives its weight to the rest", () => {
   const items = RUBRIC.filter((r) => !r.only || r.only === "outbound").map((r) => ({ ...r, done: r.skill !== "showUp" }));
   const cut = items.map((r) => (r.skill === "showUp" ? { ...r, cutOff: true } : r));

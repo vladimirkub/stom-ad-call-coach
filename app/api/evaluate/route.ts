@@ -17,7 +17,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const real = body?.scenarioId === "real";
   const direction = callDirection(body?.scenarioId, body?.direction);
-  if (real && !FEATURES.realCalls) return NextResponse.json({ error: OFF_MESSAGE }, { status: 403 });
+  // A call without a virtual patient comes only from the virtual operator's page (the trainee plays the patient).
+  if (real && !FEATURES.operator) return NextResponse.json({ error: OFF_MESSAGE }, { status: 403 });
   const ctx = await currentClinicContext();
   const scenario = real ? null : getScenario(body?.scenarioId, ctx, direction, body?.variant);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
