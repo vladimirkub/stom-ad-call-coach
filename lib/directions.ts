@@ -37,9 +37,10 @@ export const PREFERENCES: Record<string, DirectionKey[]> = {
  * Denis called the wrong clinic; Sergey complains about the aftermath of recent treatment; Natalia checks what a
  * professional hygiene includes; Andrey found a cheaper option after his consultation;
  * Mikhail, with a toothache and a tight budget, asks what each treatment path costs; Pavel describes caries symptoms; Roman
- * pulpitis symptoms; Irina periodontitis symptoms; Gleb asks the clinic to stay late.
+ * pulpitis symptoms; Irina periodontitis symptoms; Gleb asks the clinic to stay late; Stanislav
+ * wants an impacted wisdom tooth out.
  */
-export const OWN_STORY = ["tamara", "karina", "viktor", "denis", "sergey", "natalia", "andrey", "mikhail", "pavel", "roman", "irina", "gleb"];
+export const OWN_STORY = ["tamara", "karina", "viktor", "denis", "sergey", "natalia", "andrey", "mikhail", "pavel", "roman", "irina", "gleb", "stanislav"];
 
 export const directionLabel = (key: string) => DIRECTIONS.find((d) => d.key === key)?.label ?? key;
 
