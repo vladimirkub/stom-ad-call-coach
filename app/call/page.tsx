@@ -9,8 +9,8 @@ import { Brand } from "../ui";
 import { Phone } from "../icons";
 import { DirectionSwitch, useDirection } from "../direction-switch";
 
-/** The patient for the next call: one tried least often in this browser, never the last one, random among the rest. */
-function pickPatient(): string {
+/** Fallback when the server cannot answer: the patient tried least often in this browser, never the last one. */
+function pickPatientHere(): string {
   const history = getHistory();
   const last = history[history.length - 1]?.scenarioId;
   const tries = (id: string) => history.filter((h) => h.scenarioId === id).length;
@@ -36,7 +36,12 @@ export default function SimpleCall() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
     } catch {}
-    router.push(`/challenge/${pickPatient()}?start=voice&dir=${direction}`);
+    // The server knows every call of this account, on any device (lib/next-patient.ts).
+    const id = await fetch("/api/me/next-patient", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b: { id?: string } | null) => (b?.id && scenarios.some((s) => s.id === b.id) ? b.id : null))
+      .catch(() => null);
+    router.push(`/challenge/${id ?? pickPatientHere()}?start=voice&dir=${direction}`);
   }
 
   return (
