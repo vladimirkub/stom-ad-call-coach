@@ -6,7 +6,7 @@ import { gemmaJson } from "@/lib/gemma";
 import { modelRubric } from "@/lib/scoring";
 import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext } from "@/lib/session";
-import { parseDirection, type CallDirection } from "@/lib/direction";
+import { callDirection, type CallDirection } from "@/lib/direction";
 
 const LiveSchema = z.object({ passed: z.array(z.string()).default([]) });
 
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (limited) return limited;
   const body = await req.json().catch(() => null);
   const ctx = await currentClinicContext();
-  const direction = parseDirection(body?.direction);
+  const direction = callDirection(body?.scenarioId, body?.direction);
   const scenario = getScenario(body?.scenarioId, ctx, direction, body?.variant);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });

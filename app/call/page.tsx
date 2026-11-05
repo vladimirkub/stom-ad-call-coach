@@ -8,13 +8,14 @@ import { setHome } from "@/lib/home";
 import { Brand } from "../ui";
 import { Phone } from "../icons";
 import { DirectionSwitch, useDirection } from "../direction-switch";
+import { servesDirection, type CallDirection } from "@/lib/direction";
 
 /** Fallback when the server cannot answer: the patient tried least often in this browser, never the last one. */
-function pickPatientHere(): string {
+function pickPatientHere(direction: CallDirection): string {
   const history = getHistory();
   const last = history[history.length - 1]?.scenarioId;
   const tries = (id: string) => history.filter((h) => h.scenarioId === id).length;
-  const pool = scenarios.filter((s) => s.id !== last);
+  const pool = scenarios.filter((s) => s.id !== last && servesDirection(s.id, direction));
   const least = Math.min(...pool.map((s) => tries(s.id)));
   const fresh = pool.filter((s) => tries(s.id) === least);
   return fresh[Math.floor(Math.random() * fresh.length)].id;
@@ -37,11 +38,11 @@ export default function SimpleCall() {
       stream.getTracks().forEach((t) => t.stop());
     } catch {}
     // The server knows every call of this account, on any device (lib/next-patient.ts).
-    const id = await fetch("/api/me/next-patient", { cache: "no-store" })
+    const id = await fetch(`/api/me/next-patient?direction=${direction}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((b: { id?: string } | null) => (b?.id && scenarios.some((s) => s.id === b.id) ? b.id : null))
+      .then((b: { id?: string } | null) => (b?.id && scenarios.some((s) => s.id === b.id) && servesDirection(b.id, direction) ? b.id : null))
       .catch(() => null);
-    router.push(`/challenge/${id ?? pickPatientHere()}?start=voice&dir=${direction}`);
+    router.push(`/challenge/${id ?? pickPatientHere(direction)}?start=voice&dir=${direction}`);
   }
 
   return (

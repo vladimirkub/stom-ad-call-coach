@@ -5,7 +5,7 @@ import { gemmaText } from "@/lib/gemma";
 import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext } from "@/lib/session";
 import { TEMPO_NOTE_TEXT, textTempoStage } from "@/lib/tempo";
-import { parseDirection } from "@/lib/direction";
+import { callDirection } from "@/lib/direction";
 
 // Text mode has no tools: the patient hangs up by writing end_call, which the page turns into "the patient hung up".
 const TEXT_HANG_UP =
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const limited = rateLimit(req, "chat", 40);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
-  const scenario = getScenario(body?.scenarioId, await currentClinicContext(), parseDirection(body?.direction), body?.variant);
+  const scenario = getScenario(body?.scenarioId, await currentClinicContext(), callDirection(body?.scenarioId, body?.direction), body?.variant);
   const parsed = TranscriptSchema.safeParse(body?.transcript);
   if (!scenario || !parsed.success) return NextResponse.json({ error: "Некорректный запрос" }, { status: 400 });
   // The same time notes as in voice, by the operator's replies so far (lib/tempo.ts).

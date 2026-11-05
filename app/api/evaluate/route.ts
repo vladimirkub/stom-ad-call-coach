@@ -9,14 +9,14 @@ import { getScenario } from "@/lib/scenarios";
 import { currentClinicContext, currentUser } from "@/lib/session";
 import { parseAttempt, saveTraining } from "@/lib/trainings";
 import { FEATURES, OFF_MESSAGE } from "@/lib/features";
-import { parseDirection } from "@/lib/direction";
+import { callDirection } from "@/lib/direction";
 
 export async function POST(req: Request) {
   const limited = rateLimit(req, "llm", 12);
   if (limited) return limited;
   const body = await req.json().catch(() => null);
   const real = body?.scenarioId === "real";
-  const direction = parseDirection(body?.direction);
+  const direction = callDirection(body?.scenarioId, body?.direction);
   if (real && !FEATURES.realCalls) return NextResponse.json({ error: OFF_MESSAGE }, { status: 403 });
   const ctx = await currentClinicContext();
   const scenario = real ? null : getScenario(body?.scenarioId, ctx, direction, body?.variant);

@@ -15,7 +15,7 @@ import { LiveChecklist, checklistTotal, useLiveChecklist } from "../../live-chec
 import { context, initials, patientNumber, quote, years } from "../../patient-grid";
 import { useHome } from "../../home-link";
 import { DirectionSwitch, useDirection } from "../../direction-switch";
-import { INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
+import { INBOUND_ONLY, INBOUND_START_NOTE, type CallDirection } from "@/lib/direction";
 import { PatientRecord, type RecordPanelLabels, type TreatmentRecord } from "../../patient-record";
 import { TriageHint } from "../../triage-hint";
 
@@ -45,7 +45,10 @@ function Call({ id }: { id: string }) {
   const endRef = useRef<HTMLDivElement>(null);
   const home = useHome();
   // Callback on a request or the patient's own call (lib/direction.ts); fixed once the call starts.
-  const [direction, setDirection] = useDirection();
+  // A patient whose story is their own call (Viktor's claim, Denis's wrong number, the symptoms) only ever calls in.
+  const [chosen, setDirection] = useDirection();
+  const inboundOnly = INBOUND_ONLY.has(id);
+  const direction: CallDirection = inboundOnly ? "inbound" : chosen;
   const inbound = direction === "inbound";
   // On an inbound call the administrator does not know who is calling: the name shows up only in the results.
   const patientLabel = inbound ? "Пациент" : scenario.short;
@@ -124,7 +127,8 @@ function Call({ id }: { id: string }) {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
-  async function startVoice(dir: CallDirection = direction) {
+  async function startVoice(asked: CallDirection = direction) {
+    const dir: CallDirection = inboundOnly ? "inbound" : asked;
     setError(null);
     setVoiceDown(false);
     setBusy(true);
@@ -155,7 +159,7 @@ function Call({ id }: { id: string }) {
     if (autoStarted.current || q.get("start") !== "voice") return;
     autoStarted.current = true;
     const dir: CallDirection = q.get("dir") === "inbound" ? "inbound" : "outbound";
-    setDirection(dir);
+    if (!inboundOnly) setDirection(dir);
     router.replace(`/challenge/${id}`);
     void startVoice(dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -392,7 +396,12 @@ function Call({ id }: { id: string }) {
         <div className="flex min-w-0 flex-col">
           {error && <div role="alert" className="alert alert-error mb-3">{error}</div>}
 
-          {!live && <DirectionSwitch value={direction} onChange={setDirection} className="rise mb-3" />}
+          {!live && !inboundOnly && <DirectionSwitch value={direction} onChange={setDirection} className="rise mb-3" />}
+          {!live && inboundOnly && (
+            <p className="rise mb-3 rounded-full bg-white/[0.04] px-4 py-2 text-center text-xs text-slate-400 ring-1 ring-inset ring-white/[0.08]">
+              <span className="font-semibold text-slate-200">Только входящий звонок</span> · этот пациент сам звонит в клинику
+            </p>
+          )}
           {!live && (
             <div className="rise mb-4 flex flex-col gap-2.5 sm:flex-row" style={{ animationDelay: "220ms" }}>
               <button onClick={() => startVoice()} disabled={busy} className="btn btn-primary group/btn py-1.5 pr-1.5 pl-6 sm:flex-1 sm:justify-between">

@@ -3,14 +3,14 @@ import { rateLimit } from "@/lib/ratelimit";
 import { firstLine, scenarioIds, scenarioVars } from "@/lib/scenarios";
 import { agentIdFor, conversationTokenFor } from "@/lib/agents";
 import { currentClinicContext } from "@/lib/session";
-import { parseDirection } from "@/lib/direction";
+import { callDirection } from "@/lib/direction";
 
 export async function GET(req: Request) {
   const limited = rateLimit(req, "voice", 10);
   if (limited) return limited;
   const q = new URL(req.url).searchParams;
   const scenario = q.get("scenario") ?? "";
-  const direction = parseDirection(q.get("direction"));
+  const direction = callDirection(scenario, q.get("direction"));
   if (!scenarioIds.includes(scenario)) return NextResponse.json({ error: "Неизвестный пациент" }, { status: 400 });
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const agentId = agentIdFor(scenario);

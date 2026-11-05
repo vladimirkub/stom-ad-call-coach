@@ -8,6 +8,7 @@ import { ArrowUpRight } from "./icons";
 import { useClinicData } from "./clinic-data";
 import { useDirection } from "./direction-switch";
 import { PATIENT_GROUPS, parseGroupTab, type GroupTab } from "@/lib/patient-groups";
+import { servesDirection, type CallDirection } from "@/lib/direction";
 
 const GROUP_KEY = "coach:group";
 
@@ -32,12 +33,23 @@ function useGroupTab(): [GroupTab, (t: GroupTab) => void] {
   return [tab, choose];
 }
 
-/** Tabs by the kind of objection: everyone, or one group, with how many patients each holds. */
+/** The patients of this call direction: on outbound calls the inbound-only ones (lib/direction.ts) are left out. */
+const patientsFor = (direction: CallDirection) => scenarios.filter((s) => servesDirection(s.id, direction));
+
+/** The tab really shown: a group with no patients in this direction falls back to everyone. */
+function shownTab(tab: GroupTab, direction: CallDirection): GroupTab {
+  return tab === "all" || patientsFor(direction).some((s) => s.group === tab) ? tab : "all";
+}
+
+/** Tabs by the kind of objection: everyone, or one group, with how many patients each holds in this direction. */
 export function GroupTabs() {
-  const [value, onChange] = useGroupTab();
+  const [picked, onChange] = useGroupTab();
+  const [direction] = useDirection();
+  const pool = patientsFor(direction);
+  const value = shownTab(picked, direction);
   const tabs = [
-    { key: "all" as GroupTab, label: "Все", hint: "все пациенты", count: scenarios.length },
-    ...PATIENT_GROUPS.map((g) => ({ key: g.key as GroupTab, label: g.label, hint: g.hint, count: scenarios.filter((s) => s.group === g.key).length })),
+    { key: "all" as GroupTab, label: "Все", hint: "все пациенты", count: pool.length },
+    ...PATIENT_GROUPS.map((g) => ({ key: g.key as GroupTab, label: g.label, hint: g.hint, count: pool.filter((s) => s.group === g.key).length })).filter((t) => t.count > 0),
   ];
   return (
     <div role="tablist" aria-label="Пациенты по типу возражения" className="-mx-1 flex w-0 min-w-[calc(100%+0.5rem)] gap-1 overflow-x-auto px-1 pb-0.5 lg:flex-wrap lg:overflow-visible">
@@ -96,8 +108,10 @@ export default function PatientGrid({ children }: { children?: React.ReactNode }
   const [direction] = useDirection();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   useEffect(() => setHistory(getHistory()), []);
-  const [tab] = useGroupTab();
-  const shown = tab === "all" ? scenarios : scenarios.filter((s) => s.group === tab);
+  const [picked] = useGroupTab();
+  const tab = shownTab(picked, direction);
+  const pool = patientsFor(direction);
+  const shown = tab === "all" ? pool : pool.filter((s) => s.group === tab);
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
