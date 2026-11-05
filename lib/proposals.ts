@@ -3,23 +3,25 @@
 // approves or rejects it. Approval goes the owner's own way: directions saved, facts become the next legend version.
 // One pending proposal per clinic: sending again replaces it.
 import { db } from "./db.ts";
-import { approveDraft, approvedLegend, cleanFacts, cleanWishes, compareFacts, getWishes, saveDraft, setWishes, workingLegend, type Fact } from "./legend.ts";
+import { approveDraft, approvedLegend, cleanFacts, cleanFormerDoctors, cleanWishes, compareFacts, getFormerDoctors, getWishes, saveDraft, setFormerDoctors, setWishes, workingLegend, type Fact } from "./legend.ts";
 import { getDirections, setDirections, DIRECTIONS, type DirectionKey } from "./directions.ts";
 
 export type ProposalStatus = "pending" | "approved" | "rejected";
 export type Proposal = {
-  id: number; status: ProposalStatus; directions: DirectionKey[]; facts: Fact[]; wishes: string; baseVersion: number | null;
+  id: number; status: ProposalStatus; directions: DirectionKey[]; facts: Fact[]; wishes: string; formerDoctors: string[] | null; baseVersion: number | null;
   comment: string; answer: string; author: string; createdAt: number; updatedAt: number; decidedAt: number | null;
 };
 
 type Row = {
-  id: number; status: ProposalStatus; directions: string; facts: string; wishes: string | null; base_version: number | null; comment: string; answer: string;
+  id: number; status: ProposalStatus; directions: string; facts: string; wishes: string | null; former_doctors: string | null; base_version: number | null; comment: string; answer: string;
   first_name: string; last_name: string; created_at: number; updated_at: number; decided_at: number | null;
 };
 const toProposal = (r: Row | undefined): Proposal | null =>
   r
     ? {
-        id: r.id, status: r.status, directions: JSON.parse(r.directions), facts: JSON.parse(r.facts), wishes: r.wishes ?? "", baseVersion: r.base_version,
+        id: r.id, status: r.status, directions: JSON.parse(r.directions), facts: JSON.parse(r.facts), wishes: r.wishes ?? "",
+        // An older proposal without the field keeps the clinic's list as it is (null: unchanged).
+        formerDoctors: r.former_doctors == null ? null : JSON.parse(r.former_doctors), baseVersion: r.base_version,
         comment: r.comment, answer: r.answer, author: `${r.first_name} ${r.last_name}`.trim(),
         createdAt: r.created_at, updatedAt: r.updated_at, decidedAt: r.decided_at,
       }
@@ -40,6 +42,8 @@ export function proposalChanges(clinicId: number, p: Proposal) {
   const approved = approvedLegend(clinicId);
   const current = getDirections(clinicId);
   const wishesNow = getWishes(clinicId);
+  const formerNow = getFormerDoctors(clinicId);
+  const formerAfter = p.formerDoctors ?? formerNow;
   const label = (k: string) => DIRECTIONS.find((d) => d.key === k)?.label ?? k;
   return {
     directionsAdded: p.directions.filter((d) => !current.includes(d)).map(label),
@@ -47,12 +51,14 @@ export function proposalChanges(clinicId: number, p: Proposal) {
     facts: compareFacts(p.facts, approved?.facts ?? []),
     // The wishes as they would become, when they differ from now; null when unchanged.
     wishes: p.wishes !== wishesNow ? { before: wishesNow, after: p.wishes } : null,
+    // The former doctors as they would become, when they differ from now; null when unchanged.
+    formerDoctors: formerAfter.join("\n") !== formerNow.join("\n") ? { before: formerNow, after: formerAfter } : null,
     // The owner approved another legend version since the manager started from it: their copy may undo those edits.
     stale: p.baseVersion != null && approved?.version !== p.baseVersion,
   };
 }
 
-export function propose(clinicId: number, userId: number, raw: { directions?: unknown; facts?: unknown; wishes?: unknown; comment?: unknown }) {
+export function propose(clinicId: number, userId: number, raw: { directions?: unknown; facts?: unknown; wishes?: unknown; formerDoctors?: unknown; comment?: unknown }) {
   const approved = approvedLegend(clinicId);
   if (!approved) throw new Error("У клиники ещё нет утверждённой легенды: изменения можно будет предложить после неё");
   if (!Array.isArray(raw.directions)) throw new Error("Направления должны быть списком");
@@ -60,21 +66,22 @@ export function propose(clinicId: number, userId: number, raw: { directions?: un
   const facts = cleanFacts(raw.facts);
   if (facts.filter((f) => f.section !== "missing").length === 0) throw new Error("В легенде не осталось фактов");
   const wishes = raw.wishes === undefined ? getWishes(clinicId) : cleanWishes(raw.wishes);
+  const formerDoctors = raw.formerDoctors === undefined ? getFormerDoctors(clinicId) : cleanFormerDoctors(raw.formerDoctors);
   const comment = String(raw.comment ?? "").trim().slice(0, 1000);
-  const changes = proposalChanges(clinicId, { directions, facts, wishes, baseVersion: approved.version } as Proposal);
-  if (!changes.directionsAdded.length && !changes.directionsRemoved.length && !changes.facts.added.length && !changes.facts.removed.length && !changes.wishes) {
+  const changes = proposalChanges(clinicId, { directions, facts, wishes, formerDoctors, baseVersion: approved.version } as Proposal);
+  if (!changes.directionsAdded.length && !changes.directionsRemoved.length && !changes.facts.added.length && !changes.facts.removed.length && !changes.wishes && !changes.formerDoctors) {
     throw new Error("Изменений нет: всё совпадает с текущей легендой");
   }
   const now = Date.now();
   const pending = pendingProposal(clinicId);
   if (pending) {
     db()
-      .prepare("UPDATE proposals SET user_id = ?, directions = ?, facts = ?, wishes = ?, base_version = ?, comment = ?, updated_at = ? WHERE id = ?")
-      .run(userId, JSON.stringify(directions), JSON.stringify(facts), wishes, approved.version, comment, now, pending.id);
+      .prepare("UPDATE proposals SET user_id = ?, directions = ?, facts = ?, wishes = ?, former_doctors = ?, base_version = ?, comment = ?, updated_at = ? WHERE id = ?")
+      .run(userId, JSON.stringify(directions), JSON.stringify(facts), wishes, JSON.stringify(formerDoctors), approved.version, comment, now, pending.id);
   } else {
     db()
-      .prepare("INSERT INTO proposals (clinic_id, user_id, status, directions, facts, wishes, base_version, comment, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)")
-      .run(clinicId, userId, JSON.stringify(directions), JSON.stringify(facts), wishes, approved.version, comment, now, now);
+      .prepare("INSERT INTO proposals (clinic_id, user_id, status, directions, facts, wishes, former_doctors, base_version, comment, created_at, updated_at) VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(clinicId, userId, JSON.stringify(directions), JSON.stringify(facts), wishes, JSON.stringify(formerDoctors), approved.version, comment, now, now);
   }
   return pendingProposal(clinicId)!;
 }
@@ -99,6 +106,7 @@ export function approveProposal(clinicId: number, answer = "") {
   }
   setDirections(clinicId, p.directions);
   if (changes.wishes) setWishes(clinicId, p.wishes);
+  if (changes.formerDoctors) setFormerDoctors(clinicId, changes.formerDoctors.after);
   decide(p.id, "approved", answer);
 }
 

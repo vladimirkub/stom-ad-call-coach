@@ -4,6 +4,7 @@ import priv from "./scenarios-private.json" with { type: "json" };
 import { patientPrompt } from "./patient-behavior.ts";
 import { clinicContext, clinicDoctor, personaVars, type ClinicContext } from "./clinic-context.ts";
 import { fillHours } from "./clinic-hours.ts";
+import { fillFormer } from "./former-doctors.ts";
 import type { CallDirection } from "./direction.ts";
 
 /**
@@ -29,7 +30,7 @@ function pickVariant(secret: Private, variant: unknown, ctx: ClinicContext): ({ 
   const id = typeof variant === "string" && ids.includes(variant) ? variant : ids[0];
   const v = secret.variants![id];
   const doctor = clinicDoctor(ctx, v.specialty);
-  const fill = (text: string) => fillHours(text.replaceAll("{{doctor}}", doctor), ctx);
+  const fill = (text: string) => fillFormer(fillHours(text.replaceAll("{{doctor}}", doctor), ctx), ctx, id);
   return { id, doctor, ...v, patient: fill(v.patient), judge: fill(v.judge) };
 }
 
@@ -51,9 +52,9 @@ export function scenarioVars(ctx: ClinicContext, id: string, direction: CallDire
   return { ...vars, situation };
 }
 
-/** The patient's opening line for this clinic (the late patient names its last slot). */
-export function firstLine(ctx: ClinicContext, id: string): string {
-  return fillHours(pub.find((s) => s.id === id)?.firstMessage ?? "", ctx);
+/** The patient's opening line for this clinic and call variant (the late patient names its last slot, Yuri his doctor). */
+export function firstLine(ctx: ClinicContext, id: string, variant: string = "d1"): string {
+  return fillFormer(fillHours(pub.find((s) => s.id === id)?.firstMessage ?? "", ctx), ctx, variant);
 }
 
 /** A patient as this clinic's trainees meet them (the shared demo clinic when `ctx` is omitted). */
@@ -66,7 +67,7 @@ export function getScenario(id: unknown, ctx: ClinicContext = clinicContext(null
   const record = v ? (scenarioRecord(ctx, open.id, v.id) ?? undefined) : undefined;
   return {
     ...open,
-    firstMessage: firstLine(ctx, open.id),
+    firstMessage: firstLine(ctx, open.id, v?.id),
     voiceId: secret.voiceId,
     lead: fit.lead,
     hiddenObjection: fit.hiddenObjection,

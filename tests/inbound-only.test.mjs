@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { INBOUND_ONLY, callDirection, servesDirection } from "../lib/direction.ts";
 
 test("patients 14–23 call the clinic themselves: never an outbound call", () => {
-  assert.deepEqual([...INBOUND_ONLY].sort(), ["andrey", "denis", "gleb", "irina", "mikhail", "natalia", "pavel", "roman", "sergey", "stanislav", "viktor"]);
+  assert.deepEqual([...INBOUND_ONLY].sort(), ["andrey", "denis", "gleb", "irina", "mikhail", "natalia", "pavel", "roman", "sergey", "stanislav", "viktor", "yuri"]);
   assert.equal(callDirection("gleb", "outbound"), "inbound");
   assert.equal(callDirection("viktor", undefined), "inbound");
   assert.equal(callDirection("marina", "outbound"), "outbound");

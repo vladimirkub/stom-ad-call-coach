@@ -17,7 +17,8 @@ const until = async (cond) => {
 
 test("without a legend every patient is the shared demo, with no placeholder left in the prompt", () => {
   const ctx = C.clinicContext(null);
-  assert.deepEqual(ctx.memo, clinic.memo);
+  // The demo memo, plus the doctors who have left (the fictional ones until a clinic names its own).
+  assert.deepEqual(ctx.memo, [...clinic.memo, "Врачи, которые больше не работают в клинике (уволились): Лаврова Алина Денисовна, Громов Артём Викторович, Ефимова Ольга Сергеевна."]);
   for (const id of scenarioIds) {
     const s = getScenario(id, ctx);
     assert.doesNotMatch(s.prompt, /\{\{\w+\}\}/, id);
@@ -86,6 +87,6 @@ test("a failed fit is reported and keeps the shared patients", async () => {
     throw new Error("Gemini недоступен");
   });
   await until(() => personaFitState(clinicId).status !== "pending");
-  assert.deepEqual({ status: personaFitState(clinicId).status, error: personaFitState(clinicId).error }, { status: "failed", error: "Не подстроено пациентов: 24. Gemini недоступен" });
+  assert.deepEqual({ status: personaFitState(clinicId).status, error: personaFitState(clinicId).error }, { status: "failed", error: "Не подстроено пациентов: 25. Gemini недоступен" });
   assert.equal(C.clinicContext(clinicId).personas.igor.situation, C.defaultPersonas().igor.situation);
 });

@@ -7,7 +7,7 @@ import { Panel, PanelTitle } from "../ui";
 // manager edits a copy and sends it; nothing changes in trainings until Stom AD approves it (lib/proposals.ts).
 
 type Fact = { section: string; text: string; source: string | null };
-type Changes = { directionsAdded: string[]; directionsRemoved: string[]; facts: { added: string[]; removed: Fact[] }; wishes: { before: string; after: string } | null; stale: boolean };
+type Changes = { directionsAdded: string[]; directionsRemoved: string[]; facts: { added: string[]; removed: Fact[] }; wishes: { before: string; after: string } | null; formerDoctors?: { before: string[]; after: string[] } | null; stale: boolean };
 type Decision = { status: "approved" | "rejected"; answer: string; decidedAt: number };
 type State = {
   sections: { key: string; label: string; hint: string }[];
@@ -15,6 +15,7 @@ type State = {
   directions: string[];
   facts: Fact[];
   wishes: string;
+  formerDoctors: string[];
   version: number | null;
   pending: { updatedAt: number; comment: string; changes: Changes } | null;
   last: Decision | null;
@@ -35,6 +36,7 @@ export function ClinicSettings() {
   const [facts, setFacts] = useState<Fact[]>([]);
   const [comment, setComment] = useState("");
   const [wishes, setWishes] = useState("");
+  const [former, setFormer] = useState<string[]>([]);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -45,6 +47,7 @@ export function ClinicSettings() {
     setDirections(s.directions);
     setFacts(s.facts);
     setWishes(s.wishes);
+    setFormer(s.formerDoctors);
     setComment(s.pending?.comment ?? "");
     setDirty(false);
   }, []);
@@ -165,6 +168,15 @@ export function ClinicSettings() {
       </Panel>
 
       <Panel>
+        <PanelTitle>Врачи, которые уволились</PanelTitle>
+        <p className="mt-1 mb-3 text-xs text-pretty text-slate-500">
+          До трёх врачей, которые раньше работали в клинике. Пациент №25 будет просить записать его к одному из них: администратор должен удержать его в клинике и не
+          раскрывать контакты бывшего сотрудника. Если поля пустые, тренажёр возьмёт вымышленные имена.
+        </p>
+        <FormerDoctorsFields value={former} onChange={(v) => { setFormer(v); setDirty(true); }} />
+      </Panel>
+
+      <Panel>
         <PanelTitle>Что знают о клинике пациенты и тренер</PanelTitle>
         <p className="mt-1 text-xs text-pretty text-slate-500">
           Факты с вашего сайта и из рекламы. Поправьте устаревшее и добавьте то, чего на сайте нет: парковка, условия рассрочки, новые акции и их сроки.
@@ -239,7 +251,7 @@ export function ClinicSettings() {
             type="button"
             className="btn btn-primary"
             disabled={busy || !dirty}
-            onClick={() => run({ action: "propose", directions, facts: facts.filter((f) => f.text.trim()), wishes, comment }, "Отправлено на утверждение")}
+            onClick={() => run({ action: "propose", directions, facts: facts.filter((f) => f.text.trim()), wishes, formerDoctors: former, comment }, "Отправлено на утверждение")}
           >
             {busy ? "Отправляем…" : pending ? "Отправить заново" : "Отправить на утверждение"}
           </button>
@@ -250,9 +262,31 @@ export function ClinicSettings() {
   );
 }
 
+/** Three name fields for the doctors who have left the clinic; also on the owner's legend page. */
+export function FormerDoctorsFields({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const names = [0, 1, 2].map((i) => value[i] ?? "");
+  const set = (i: number, text: string) => onChange(names.map((n, j) => (j === i ? text : n)).filter((n, j, all) => n.trim() || all.slice(j + 1).some((x) => x.trim())));
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      {names.map((n, i) => (
+        <input
+          key={i}
+          id={`former-doctor-${i + 1}`}
+          aria-label={`Уволившийся врач ${i + 1}`}
+          className="field text-[13px]"
+          maxLength={120}
+          placeholder={["Иванова Мария Петровна", "Сидоров Олег Андреевич", "Кузнецова Анна Игоревна"][i]}
+          value={n}
+          onChange={(e) => set(i, e.target.value)}
+        />
+      ))}
+    </div>
+  );
+}
+
 /** What a proposal changes, in one short list. Also used by the owner's review. */
 export function ChangeSummary({ changes }: { changes: Changes }) {
-  const { directionsAdded, directionsRemoved, facts, wishes } = changes;
+  const { directionsAdded, directionsRemoved, facts, wishes, formerDoctors } = changes;
   return (
     <ul className="mt-3 flex flex-col gap-1 text-sm text-slate-300">
       {directionsAdded.length > 0 && <li><span className="text-accent">+ направления:</span> {directionsAdded.join(", ")}</li>}
@@ -260,6 +294,11 @@ export function ChangeSummary({ changes }: { changes: Changes }) {
       {wishes && (
         <li>
           <span className="text-accent">пожелания к тренировке:</span> {wishes.after ? <span className="whitespace-pre-line">«{wishes.after}»</span> : <span className="text-slate-500">убраны</span>}
+        </li>
+      )}
+      {formerDoctors && (
+        <li>
+          <span className="text-accent">уволившиеся врачи:</span> {formerDoctors.after.length ? formerDoctors.after.join(", ") : <span className="text-slate-500">убраны</span>}
         </li>
       )}
       {facts.added.map((t, i) => <li key={`a${i}`}><span className="text-accent">+</span> {t}</li>)}

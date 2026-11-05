@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireManager } from "@/lib/session";
-import { SECTIONS, approvedLegend, getWishes } from "@/lib/legend";
+import { SECTIONS, approvedLegend, getFormerDoctors, getWishes } from "@/lib/legend";
 import { DIRECTIONS, getDirections } from "@/lib/directions";
 import { lastDecision, pendingProposal, propose, proposalChanges, withdrawProposal } from "@/lib/proposals";
 
@@ -14,6 +14,7 @@ function state(clinicId: number) {
     directions: pending?.directions ?? getDirections(clinicId),
     facts: pending?.facts ?? approved?.facts ?? [],
     wishes: pending ? pending.wishes : getWishes(clinicId),
+    formerDoctors: pending?.formerDoctors ?? getFormerDoctors(clinicId),
     version: approved?.version ?? null,
     pending: pending && { ...pending, changes: proposalChanges(clinicId, pending) },
     last: lastDecision(clinicId),

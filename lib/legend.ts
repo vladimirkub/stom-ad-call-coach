@@ -106,6 +106,30 @@ export function setWishes(clinicId: number, raw: unknown) {
   return wishes;
 }
 
+/**
+ * Doctors who used to work at the clinic and have left (up to three full names, «Фамилия Имя Отчество»). A patient asks
+ * for one of them (lib/former-doctors.ts); the administrators see them in the memo, the patients' site facts never do.
+ */
+export const MAX_FORMER_DOCTORS = 3;
+export function cleanFormerDoctors(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) throw new Error("Уволившиеся врачи должны быть списком");
+  return raw.map((n) => String(n ?? "").replace(/\s+/g, " ").trim().slice(0, 120)).filter(Boolean).slice(0, MAX_FORMER_DOCTORS);
+}
+
+export function getFormerDoctors(clinicId: number): string[] {
+  const row = db().prepare("SELECT former_doctors FROM clinics WHERE id = ?").get(clinicId) as { former_doctors: string } | undefined;
+  if (!row) throw new Error("Клиника не найдена");
+  return cleanFormerDoctors(JSON.parse(row.former_doctors || "[]"));
+}
+
+export function setFormerDoctors(clinicId: number, raw: unknown) {
+  const names = cleanFormerDoctors(raw);
+  const r = db().prepare("UPDATE clinics SET former_doctors = ? WHERE id = ?").run(JSON.stringify(names), clinicId);
+  if (!r.changes) throw new Error("Клиника не найдена");
+  return names;
+}
+
 // ---- storage ----
 
 type Row = { id: number; status: LegendStatus; version: number | null; facts: string; pages: string; error: string | null; created_at: number; updated_at: number; approved_at: number | null };

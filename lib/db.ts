@@ -117,10 +117,12 @@ export function db(): DatabaseSync {
     if (!clinicCols.some((c) => c.name === "offers")) conn.exec("ALTER TABLE clinics ADD COLUMN offers TEXT NOT NULL DEFAULT ''");
     if (!clinicCols.some((c) => c.name === "directions")) conn.exec("ALTER TABLE clinics ADD COLUMN directions TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE clinics ADD COLUMN wishes TEXT NOT NULL DEFAULT ''");
+    if (!clinicCols.some((c) => c.name === "former_doctors")) conn.exec("ALTER TABLE clinics ADD COLUMN former_doctors TEXT NOT NULL DEFAULT '[]'");
     const usageCols = conn.prepare("PRAGMA table_info(usage)").all() as { name: string }[];
     if (!usageCols.some((c) => c.name === "error")) conn.exec("ALTER TABLE usage ADD COLUMN error TEXT");
     const proposalCols = conn.prepare("PRAGMA table_info(proposals)").all() as { name: string }[];
     if (!proposalCols.some((c) => c.name === "wishes")) conn.exec("ALTER TABLE proposals ADD COLUMN wishes TEXT");
+    if (!proposalCols.some((c) => c.name === "former_doctors")) conn.exec("ALTER TABLE proposals ADD COLUMN former_doctors TEXT");
     // The clinic manager role (Nov 2026): SQLite cannot widen a CHECK, so an older users table is rebuilt once, and each
     // clinic's shared "admin.<clinic>" account, which managers already use, becomes the manager.
     const usersSql = (conn.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get() as { sql: string }).sql;

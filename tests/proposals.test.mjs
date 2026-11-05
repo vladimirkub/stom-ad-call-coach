@@ -85,3 +85,14 @@ test("the manager can propose only new wishes for training; approval saves them"
   assert.equal(legend.getWishes(clinic), "Проверить страх наркоза у детей и опыт врачей");
   assert.equal(legend.approvedLegend(clinic).version, before, "no facts changed: no new legend version");
 });
+
+test("the manager names the doctors who have left: a change on its own, applied on approval without a new legend version", () => {
+  const current = legend.approvedLegend(clinic);
+  const p = P.propose(clinic, manager.id, { directions: getDirections(clinic), facts: current.facts, formerDoctors: ["Иванова Мария Петровна", "", "Орлов Игорь Петрович"] });
+  assert.deepEqual(P.proposalChanges(clinic, p).formerDoctors, { before: [], after: ["Иванова Мария Петровна", "Орлов Игорь Петрович"] });
+  P.approveProposal(clinic);
+  assert.deepEqual(legend.getFormerDoctors(clinic), ["Иванова Мария Петровна", "Орлов Игорь Петрович"]);
+  assert.equal(legend.approvedLegend(clinic).version, current.version);
+  // Sending the same names again is not a change.
+  assert.throws(() => P.propose(clinic, manager.id, { directions: getDirections(clinic), facts: current.facts, formerDoctors: ["Иванова Мария Петровна", "Орлов Игорь Петрович"] }), /Изменений нет/);
+});

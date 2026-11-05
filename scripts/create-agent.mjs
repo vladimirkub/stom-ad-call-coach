@@ -34,7 +34,7 @@ const jobs = pub.map((s) => {
         // {{situation}}, {{concerns}}, {{site_facts}}, {{call_direction}} and {{first_line}} are filled per call for the
         // trainee's clinic and the call's direction (/api/signed-url); these defaults are the shared demo clinic's callback.
         dynamic_variables: {
-          dynamic_variable_placeholders: { situation: p.situation, concerns: p.concerns, site_facts: clinic.promptFacts, call_direction: OUTBOUND_RULE, first_line: s.firstMessage.replaceAll("{{slot}}", "20:20").replaceAll("{{close}}", "21:00") },
+          dynamic_variable_placeholders: { situation: p.situation, concerns: p.concerns, site_facts: clinic.promptFacts, call_direction: OUTBOUND_RULE, first_line: s.firstMessage.replaceAll("{{slot}}", "20:20").replaceAll("{{close}}", "21:00").replaceAll("{{former}}", "Лаврова Алина Денисовна") },
         },
         prompt: {
           prompt: agentPrompt(p.prompt),

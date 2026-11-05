@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     const ctx = await currentClinicContext();
     const dynamicVariables = {
       ...scenarioVars(ctx, scenario, direction, q.get("variant")),
-      first_line: direction === "inbound" ? "" : firstLine(ctx, scenario),
+      first_line: direction === "inbound" ? "" : firstLine(ctx, scenario, q.get("variant") ?? undefined),
     };
     return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId), dynamicVariables });
   } catch {

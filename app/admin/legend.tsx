@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import scenarios from "@/lib/scenarios-public.json";
 import { Panel, PanelTitle } from "../ui";
-import { ChangeSummary } from "../clinic/settings";
+import { ChangeSummary, FormerDoctorsFields } from "../clinic/settings";
 
 // The owner's editor for one clinic's legend: its websites, the analysis that drafts facts from them, the draft
 // itself (edit, delete, add) and approval. Trainings use only the approved version.
@@ -18,6 +18,7 @@ type State = {
   sites: { url: string; label: string }[];
   offers: string;
   wishes: string;
+  formerDoctors: string[];
   approved: Legend | null;
   working: Legend | null;
   history: { id: number; version: number; approvedAt: number; facts: number; status: string }[];
@@ -26,7 +27,7 @@ type State = {
   directions: { options: { key: string; label: string; hint: string }[]; selected: string[]; suggested: string[]; plan: Record<string, string> };
   proposal: {
     author: string; updatedAt: number; comment: string;
-    changes: { directionsAdded: string[]; directionsRemoved: string[]; facts: { added: string[]; removed: Fact[] }; wishes: { before: string; after: string } | null; stale: boolean };
+    changes: { directionsAdded: string[]; directionsRemoved: string[]; facts: { added: string[]; removed: Fact[] }; wishes: { before: string; after: string } | null; formerDoctors?: { before: string[]; after: string[] } | null; stale: boolean };
   } | null;
 };
 type Fit = { lead: string; situation: string; concerns: string; direction?: string };
@@ -61,6 +62,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
   const [sites, setSites] = useState<{ url: string; label: string }[]>([]);
   const [offers, setOffers] = useState("");
   const [wishes, setWishes] = useState("");
+  const [former, setFormer] = useState<string[]>([]);
   const [directions, setDirections] = useState<string[]>([]);
   const [facts, setFacts] = useState<Fact[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -74,6 +76,7 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
     setSites(s.sites.length ? s.sites : [{ url: "", label: "Официальный сайт" }]);
     setOffers(s.offers);
     setWishes(s.wishes);
+    setFormer(s.formerDoctors);
     setDirections(s.directions.selected);
     if (!keepEdits) {
       setFacts(s.working?.status === "draft" ? s.working.facts : []);
@@ -321,6 +324,25 @@ export function LegendEditor({ clinicId, onChanged }: { clinicId: number; onChan
             Сохранить пожелания
           </button>
           <span className="text-xs tabular-nums text-slate-600">{wishes.length.toLocaleString("ru-RU")} / 100 000</span>
+        </div>
+      </Panel>
+
+      <Panel>
+        <PanelTitle>Врачи, которые уволились</PanelTitle>
+        <p className="mt-1 mb-3 text-xs text-pretty text-slate-500">
+          До трёх врачей, которые раньше работали в клинике. Пациент №25 просит записать его к одному из них (выбирается случайно на каждый звонок), а в памятке
+          администратора они отмечены как уволившиеся. Пусто: вымышленные имена.
+        </p>
+        <FormerDoctorsFields value={former} onChange={setFormer} />
+        <div className="mt-3">
+          <button
+            type="button"
+            className="btn btn-primary px-4 py-2 text-xs"
+            disabled={!!busy || former.join("\n") === state.formerDoctors.join("\n")}
+            onClick={() => run("formerDoctors", { action: "formerDoctors", formerDoctors: former }, "Уволившиеся врачи сохранены")}
+          >
+            Сохранить врачей
+          </button>
         </div>
       </Panel>
 

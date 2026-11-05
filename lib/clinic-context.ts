@@ -7,7 +7,8 @@ import type { CallDirection } from "./direction.ts";
 import priv from "./scenarios-private.json" with { type: "json" };
 import clinic from "./clinic.json" with { type: "json" };
 import { db } from "./db.ts";
-import { SECTIONS, type Fact } from "./legend.ts";
+import { SECTIONS, cleanFormerDoctors, type Fact } from "./legend.ts";
+import { DEFAULT_FORMER_DOCTORS } from "./former-doctors.ts";
 import { factsForDirection } from "./directions.ts";
 
 export type PersonaFit = { lead: string; situation: string; concerns: string; hiddenObjection: string; showUpRisk: string; direction?: string };
@@ -20,6 +21,8 @@ export type ClinicContext = {
   facts: Fact[] | null;
   /** What the clinic wants its administrators tested on, in its own words; the evaluator checks it (lib/legend.ts). */
   wishes: string;
+  /** Doctors who have left the clinic (lib/former-doctors.ts): in the administrators' memo, never in the patients' facts. */
+  formerDoctors: string[];
   personas: Record<string, PersonaFit>;
   /** Patients fitted to this clinic's legend; the rest are the demo clinic's until their fit is ready. */
   fittedIds: string[];
@@ -62,7 +65,15 @@ export function siteFactsFromFacts(facts: Fact[]): string {
   ].join("\n");
 }
 
-const DEFAULT: ClinicContext = { clinicId: null, legendVersion: null, memo: clinic.memo, siteFacts: clinic.promptFacts, facts: null, wishes: "", personas: defaultPersonas(), fittedIds: [] };
+/** The memo line naming the doctors who have left: the administrator knows it from the clinic, the patient does not. */
+export function formerDoctorsMemo(names: string[]): string {
+  return `Врачи, которые больше не работают в клинике (уволились): ${names.join(", ")}.`;
+}
+
+const DEFAULT: ClinicContext = {
+  clinicId: null, legendVersion: null, memo: [...clinic.memo, formerDoctorsMemo(DEFAULT_FORMER_DOCTORS)], siteFacts: clinic.promptFacts, facts: null, wishes: "",
+  formerDoctors: [], personas: defaultPersonas(), fittedIds: [],
+};
 
 /** The context for a clinic (null: the shared demo). Each patient fitted to this legend version replaces the demo one. */
 export function clinicContext(clinicId: number | null | undefined): ClinicContext {
@@ -70,17 +81,21 @@ export function clinicContext(clinicId: number | null | undefined): ClinicContex
   const row = db().prepare("SELECT version, facts, personas, personas_status FROM legends WHERE clinic_id = ? AND status = 'approved'").get(clinicId) as
     | { version: number; facts: string; personas: string; personas_status: string | null }
     | undefined;
-  const wishes = (db().prepare("SELECT wishes FROM clinics WHERE id = ?").get(clinicId) as { wishes: string } | undefined)?.wishes ?? "";
-  if (!row) return { ...DEFAULT, clinicId, wishes };
+  const brief = db().prepare("SELECT wishes, former_doctors FROM clinics WHERE id = ?").get(clinicId) as { wishes: string; former_doctors: string } | undefined;
+  const wishes = brief?.wishes ?? "";
+  const formerDoctors = cleanFormerDoctors(JSON.parse(brief?.former_doctors || "[]"));
+  const former = formerDoctorsMemo(formerDoctors.length ? formerDoctors : DEFAULT_FORMER_DOCTORS);
+  if (!row) return { ...DEFAULT, clinicId, wishes, formerDoctors, memo: [...clinic.memo, former] };
   const facts = JSON.parse(row.facts) as Fact[];
   const fitted = JSON.parse(row.personas) as Record<string, PersonaFit>;
   return {
     clinicId,
     legendVersion: row.version,
-    memo: memoFromFacts(facts),
+    memo: [...memoFromFacts(facts), former],
     siteFacts: siteFactsFromFacts(facts),
     facts,
     wishes,
+    formerDoctors,
     personas: { ...DEFAULT.personas, ...fitted },
     fittedIds: Object.keys(fitted),
   };

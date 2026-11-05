@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/session";
 import {
-  OFFERS_SOURCE, SECTIONS, approveDraft, approvedLegend, compareFacts, discardDraft, expireStaleAnalyses, getOffers, getSites, getWishes, legendHistory, saveDraft, setOffers,
-  setSites, setWishes, startAnalysis, workingLegend,
+  OFFERS_SOURCE, SECTIONS, approveDraft, approvedLegend, compareFacts, discardDraft, expireStaleAnalyses, getOffers, getSites, getWishes, getFormerDoctors, legendHistory, saveDraft, setOffers,
+  setSites, setWishes, setFormerDoctors, startAnalysis, workingLegend,
 } from "@/lib/legend";
 import { ensurePersonaFit, personaFitState, startPersonaFit } from "@/lib/persona-fit";
 import { DIRECTIONS, assignDirections, getDirections, setDirections, suggestDirections } from "@/lib/directions";
@@ -22,6 +22,7 @@ function state(clinicId: number) {
     sites: getSites(clinicId),
     offers: getOffers(clinicId),
     wishes: getWishes(clinicId),
+    formerDoctors: getFormerDoctors(clinicId),
     approved,
     working,
     history: legendHistory(clinicId),
@@ -84,6 +85,10 @@ export async function POST(req: Request) {
         setWishes(clinicId, body.wishes);
         // The patients raise the wished topics: refit them to the new wishes.
         if (approvedLegend(clinicId)) startPersonaFit(clinicId);
+        break;
+      case "formerDoctors":
+        // Filled into the calls of the patient who asks for a former doctor; nothing to refit.
+        setFormerDoctors(clinicId, body.formerDoctors);
         break;
       case "discard":
         discardDraft(clinicId);
