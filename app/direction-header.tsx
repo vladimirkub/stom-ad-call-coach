@@ -19,8 +19,7 @@ export default function DirectionHeader() {
   const t = TEXT[direction];
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <p className="text-xs font-medium text-accent">Вы {direction === "inbound" ? "администратор" : "оператор"}</p>
+      <div className="flex">
         <DirectionSwitch value={direction} onChange={setDirection} compact />
       </div>
       <h1 id="trainer" className="mt-1.5 text-3xl font-semibold leading-[1.05] tracking-[-0.03em] text-balance lg:text-[min(2.25rem,2.4vw)] short:text-[min(1.75rem,2.4vw)] low:mt-1">

@@ -111,8 +111,19 @@ body::after {
 }
 .rise { animation: rise 0.8s var(--ease-spring) both; }
 .ring-pulse { animation: ring 2.4s cubic-bezier(0.2, 0.7, 0.2, 1) infinite; }
+/* The agency banner: a dot that pings and a feed of requests scrolling up forever (two copies, so -50% loops). */
+@keyframes agency-ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+@keyframes agency-feed {
+  to { transform: translateY(calc(-50% - 0.1875rem)); }
+}
+.agency-ping { animation: agency-ping 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) infinite; }
+.agency-feed { animation: agency-feed 18s linear infinite; will-change: transform; }
+.group:hover .agency-feed { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-  .rise, .ring-pulse { animation: none; }
+  .rise, .ring-pulse, .agency-ping, .agency-feed { animation: none; }
 }
 
 /* A checklist box popping in when its criterion gets ticked during a call. */
