@@ -165,13 +165,13 @@ export function setActive(userId: number, active: boolean) {
 export type LoginResult = { ok: true; token: string } | { ok: false; reason: "invalid" | "disabled" };
 
 export function login(loginName: string, password: string): LoginResult {
-  const u = db().prepare("SELECT id, pass_hash, active FROM users WHERE login = ?").get(loginName.trim().toLowerCase()) as
-    | { id: number; pass_hash: string; active: number }
-    | undefined;
+  const u = db()
+    .prepare("SELECT u.id, u.pass_hash, u.active, c.access_until FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.login = ?")
+    .get(loginName.trim().toLowerCase()) as { id: number; pass_hash: string; active: number; access_until: number | null } | undefined;
   // Hash anyway on an unknown login, so response time does not reveal which logins exist.
   if (!u) return verifyPassword(password, "scrypt$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), { ok: false, reason: "invalid" };
   if (!verifyPassword(password, u.pass_hash)) return { ok: false, reason: "invalid" };
-  if (!u.active) return { ok: false, reason: "disabled" };
+  if (!u.active || (u.access_until != null && u.access_until <= Date.now())) return { ok: false, reason: "disabled" };
   return { ok: true, token: createSession(u.id) };
 }
 
@@ -186,16 +186,16 @@ export function endSession(token: string) {
   db().prepare("DELETE FROM sessions WHERE token_hash = ?").run(sha256(token));
 }
 
-/** The signed-in, active user for a session token, or null. Disabling a user or resetting the password ends access at once. */
+/** The signed-in, active user for a session token, or null. Disabling a user, resetting the password or the end of a clinic's trial ends access at once. */
 export function sessionUser(token: string | undefined | null): SessionUser | null {
   if (!token) return null;
   const row = db()
     .prepare(
       `SELECT u.id, u.role, u.first_name, u.last_name, u.login, c.id AS cid, c.legal_name, c.slug, c.city
        FROM sessions s JOIN users u ON u.id = s.user_id LEFT JOIN clinics c ON c.id = u.clinic_id
-       WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1`,
+       WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1 AND (c.access_until IS NULL OR c.access_until > ?)`,
     )
-    .get(sha256(token), Date.now()) as Record<string, string | number | null> | undefined;
+    .get(sha256(token), Date.now(), Date.now()) as Record<string, string | number | null> | undefined;
   if (!row) return null;
   return {
     id: Number(row.id),

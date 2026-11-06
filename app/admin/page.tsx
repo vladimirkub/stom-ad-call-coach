@@ -7,6 +7,7 @@ import { PageHeader, Panel, PanelTitle, Shell } from "../ui";
 import { StatsPanel, type StatsView } from "./stats";
 import { LegendEditor } from "./legend";
 import { UsagePanel } from "./usage";
+import { LeadsPanel } from "./leads";
 
 type Clinic = { id: number; legalName: string; slug: string; city: string; users: number; activeUsers: number | null; legendVersion: number | null; proposal?: boolean };
 type Trainee = { id: number; firstName: string; lastName: string; login: string; password: string | null; active: boolean; manager: boolean; tech: boolean };
@@ -22,7 +23,8 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 // Owner-only: training statistics, and clinics with their trainees' generated logins and passwords.
 export default function Admin() {
   const auth = useAuth();
-  const [tab, setTab] = useState<"stats" | "usage" | "access">("stats");
+  const [tab, setTab] = useState<"stats" | "usage" | "access" | "leads">("stats");
+  const [newLeads, setNewLeads] = useState(0);
   const [nav, setNav] = useState<StatsView>({ view: "overview" });
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -50,7 +52,11 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    if (auth.status === "user" && auth.user.role === "owner") loadClinics();
+    if (auth.status !== "user" || auth.user.role !== "owner") return;
+    loadClinics();
+    api<{ leads: { status: string }[] }>("/api/admin/leads")
+      .then((r) => setNewLeads(r.leads.filter((l) => l.status === "new").length))
+      .catch(() => undefined);
   }, [auth, loadClinics]);
 
   if (auth.status === "user" && auth.user.role !== "owner") {
@@ -64,11 +70,13 @@ export default function Admin() {
   const clinic = clinics.find((c) => c.id === selected) ?? null;
   return (
     <Shell width="max-w-6xl">
-      <PageHeader eyebrow="Админка" title={tab === "stats" ? "Статистика тренировок" : tab === "usage" ? "Расход и тарифы" : "Клиники и доступы"}>
+      <PageHeader eyebrow="Админка" title={tab === "stats" ? "Статистика тренировок" : tab === "usage" ? "Расход и тарифы" : tab === "leads" ? "Заявки на подключение" : "Клиники и доступы"}>
         {tab === "stats"
           ? "Кто тренируется, с каким результатом и на чём ошибается. Нажмите на клинику, администратора или звонок, чтобы открыть подробности."
           : tab === "usage"
             ? "Сколько минут голоса тратит каждая клиника и каждый администратор, во что это обходится и какой тариф ставить в договор."
+            : tab === "leads"
+              ? "Клиники оставляют заявку в Telegram-боте. Проверьте её и выдайте доступ одной кнопкой: клиника, логин руководителя и пациенты по сайту создадутся сами."
             : "Заведите клинику, добавьте её администраторов и отправьте каждому логин и пароль."}
       </PageHeader>
       {voiceAlert && (
@@ -96,6 +104,7 @@ export default function Admin() {
             ["stats", "Статистика"],
             ["usage", "Расход"],
             ["access", "Клиники и доступы"],
+            ["leads", newLeads ? `Заявки · ${newLeads}` : "Заявки"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -115,6 +124,8 @@ export default function Admin() {
         <StatsPanel nav={nav} go={go} />
       ) : tab === "usage" ? (
         <UsagePanel />
+      ) : tab === "leads" ? (
+        <LeadsPanel onCount={setNewLeads} />
       ) : (
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">

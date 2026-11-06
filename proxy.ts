@@ -7,7 +7,8 @@ import { FEATURES, FEATURE_APIS, OFF_MESSAGE } from "@/lib/features";
 // APIs of switched-off sections (lib/features.ts) are refused for everyone.
 export function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  if (path.startsWith("/api/auth/")) return NextResponse.next();
+  // The Telegram bot's webhook has no session: it checks Telegram's secret header itself (app/api/telegram/webhook).
+  if (path.startsWith("/api/auth/") || path === "/api/telegram/webhook") return NextResponse.next();
   if (!sessionUser(req.cookies.get(SESSION_COOKIE)?.value)) {
     return NextResponse.json({ error: "Войдите в систему", auth: "required" }, { status: 401 });
   }

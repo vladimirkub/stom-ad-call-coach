@@ -122,6 +122,8 @@ export function db(): DatabaseSync {
     // up alone (lib/clinic-setup.ts) or proposes changes for the owner's approval (lib/proposals.ts).
     if (!clinicCols.some((c) => c.name === "own_facts")) conn.exec("ALTER TABLE clinics ADD COLUMN own_facts TEXT NOT NULL DEFAULT '[]'");
     if (!clinicCols.some((c) => c.name === "autonomous")) conn.exec("ALTER TABLE clinics ADD COLUMN autonomous INTEGER NOT NULL DEFAULT 1");
+    // A trial clinic's access ends at this moment (ms); NULL keeps access open. Set when a request is approved (lib/leads.ts).
+    if (!clinicCols.some((c) => c.name === "access_until")) conn.exec("ALTER TABLE clinics ADD COLUMN access_until INTEGER");
     const usageCols = conn.prepare("PRAGMA table_info(usage)").all() as { name: string }[];
     if (!usageCols.some((c) => c.name === "error")) conn.exec("ALTER TABLE usage ADD COLUMN error TEXT");
     const proposalCols = conn.prepare("PRAGMA table_info(proposals)").all() as { name: string }[];
@@ -160,6 +162,28 @@ export function db(): DatabaseSync {
     if (!legendCols.some((c) => c.name === "origin")) conn.exec("ALTER TABLE legends ADD COLUMN origin TEXT NOT NULL DEFAULT 'owner'");
     if (!legendCols.some((c) => c.name === "author")) conn.exec("ALTER TABLE legends ADD COLUMN author TEXT NOT NULL DEFAULT ''");
     if (!legendCols.some((c) => c.name === "note")) conn.exec("ALTER TABLE legends ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+    // Connection requests from the Telegram bot (lib/leads.ts), and small key-value settings (the owner's Telegram chat).
+    conn.exec(`CREATE TABLE IF NOT EXISTS leads (
+      id INTEGER PRIMARY KEY,
+      chat_id TEXT NOT NULL,
+      username TEXT NOT NULL DEFAULT '',
+      step TEXT NOT NULL,
+      full_name TEXT NOT NULL DEFAULT '',
+      position TEXT NOT NULL DEFAULT '',
+      clinic TEXT NOT NULL DEFAULT '',
+      city TEXT NOT NULL DEFAULT '',
+      site TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL CHECK (status IN ('filling', 'new', 'approved', 'rejected')),
+      checks TEXT,
+      clinic_id INTEGER REFERENCES clinics(id),
+      user_id INTEGER REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      decided_at INTEGER
+    )`);
+    conn.exec("CREATE INDEX IF NOT EXISTS leads_chat ON leads(chat_id, status)");
+    conn.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
     g.__coachDb = conn;
   }
   return g.__coachDb;

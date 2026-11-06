@@ -12,7 +12,7 @@ import { Personalize } from "./landing/personal";
 import { ProblemCards } from "./landing/problem";
 
 // The public site at the root of coach.stom-ad.com, built along SPIN: situation, problem, implication, need-payoff,
-// then the free trial. Every call to action opens the Telegram chat with Stom AD (no form, no personal data here).
+// then the free trial. Every call to action opens the request bot in Telegram (lib/leads.ts); no form on the site.
 // Texts, dates and links live in lib/landing.json. The page is re-rendered hourly, so the free-trial offer switches
 // to the regular one by itself once the date in the config has passed.
 
@@ -229,7 +229,7 @@ export default function Home() {
               <a href={site.loginUrl} className="transition-colors duration-300 hover:text-white">
                 Войти
               </a>
-              <a href={cta} target="_blank" rel="noopener" className="transition-colors duration-300 hover:text-white">
+              <a href={site.founderUrl} target="_blank" rel="noopener" className="transition-colors duration-300 hover:text-white">
                 Telegram
               </a>
             </div>
