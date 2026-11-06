@@ -42,7 +42,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     };
   }, [refresh]);
 
-  const open = OPEN_PATHS.some((p) => pathname?.startsWith(p));
+  // The site's front page (/) is public: it describes the product; the app starts at /app.
+  const open = pathname === "/" || OPEN_PATHS.some((p) => pathname?.startsWith(p));
   return (
     <AuthContext.Provider value={state}>
       {children}

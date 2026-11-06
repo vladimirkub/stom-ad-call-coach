@@ -18,6 +18,14 @@
   --color-ink-800: #14171f;
   --color-ink-700: #1c2029;
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The public site has its own palette: graphite, warm orange call to action, teal for "live" statuses. */
+  --color-graphite: #101318;
+  --color-graphite-800: #161a21;
+  --color-graphite-700: #1d222b;
+  --color-graphite-600: #272d38;
+  --color-mist: #a9b1bd;
+  --color-flame: #f58a35;
+  --color-pulse: #48c9b0;
 }
 
 body {
@@ -145,4 +153,35 @@ body::after {
 .wave-bar { transform-origin: center; animation: wave 1.2s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
 @media (prefers-reduced-motion: reduce) {
   .wave-bar { animation: none; transform: scaleY(0.6); }
+}
+
+/* Public site motion. Every loop stops for people who prefer reduced motion. */
+@keyframes site-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes site-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes site-ping {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+@keyframes site-caret {
+  50% { opacity: 0; }
+}
+.site-in { animation: site-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.site-draw { stroke-dasharray: 1; animation: site-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.site-ping { animation: site-ping 1.8s cubic-bezier(0.2, 0.7, 0.2, 1) infinite; }
+.site-caret { animation: site-caret 1s steps(1) infinite; }
+.site-scroll { scrollbar-width: none; }
+.site-scroll::-webkit-scrollbar { display: none; }
+.site-range { accent-color: var(--color-flame); }
+@media (prefers-reduced-motion: reduce) {
+  .site-in, .site-draw, .site-ping, .site-caret { animation: none; }
+}
+@keyframes site-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
