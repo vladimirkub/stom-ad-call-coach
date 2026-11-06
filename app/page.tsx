@@ -85,7 +85,7 @@ export default function Home() {
       <a href="#main" className="sr-only rounded-full bg-flame px-4 py-2 font-semibold text-graphite focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50">
         К содержанию
       </a>
-      <Nav links={LINKS} cta={{ href: cta, label: offer.heroCta }} login={site.loginUrl} />
+      <Nav links={LINKS} cta={{ href: cta, label: offer.heroCta, short: offer.navShort }} login={site.loginUrl} />
 
       <main id="main">
         {/* 1. Situation */}

@@ -14,7 +14,7 @@ export default function OpengraphImage() {
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#101318", padding: 80 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {BARS.map((h, i) => (
-            <div key={i} style={{ width: 14, height: h, borderRadius: 7, background: i % 5 === 2 ? "#48c9b0" : "#f58a35" }} />
+            <div key={i} style={{ width: 14, height: h, borderRadius: 7, background: "#6fdcb8" }} />
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

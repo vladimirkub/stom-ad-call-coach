@@ -123,7 +123,7 @@ export function Cta({
   const base = size === "lg" ? "gap-3 py-2 pl-5 pr-2 text-base" : "gap-2 py-1.5 pl-3.5 pr-1.5 text-sm";
   const toneCls =
     tone === "flame"
-      ? "bg-flame text-graphite hover:bg-[#f79a50]"
+      ? "bg-accent text-ink-950 hover:brightness-110"
       : "text-white ring-1 ring-inset ring-white/15 hover:bg-white/[0.06]";
   return (
     <a
@@ -133,12 +133,12 @@ export function Cta({
       onPointerMove={move}
       onPointerLeave={leave}
       {...(external ? { target: "_blank", rel: "noopener" } : {})}
-      className={`group inline-flex items-center rounded-full font-semibold transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-flame ${base} ${toneCls}`}
+      className={`group inline-flex items-center rounded-full font-semibold transition-[background-color,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${base} ${toneCls}`}
     >
       {children}
       <span
         aria-hidden
-        className={`flex items-center justify-center rounded-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-px group-hover:translate-x-0.5 group-hover:scale-105 ${size === "lg" ? "h-8 w-8" : "h-6 w-6"} ${tone === "flame" ? "bg-graphite/10" : "bg-white/10"}`}
+        className={`flex items-center justify-center rounded-full transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-y-px group-hover:translate-x-0.5 group-hover:scale-105 ${size === "lg" ? "h-8 w-8" : "h-6 w-6"} ${tone === "flame" ? "bg-ink-950/10" : "bg-white/10"}`}
       >
         <svg viewBox="0 0 24 24" className={size === "lg" ? "h-4 w-4" : "h-3 w-3"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M7 17 17 7M8 7h9v9" />
@@ -149,7 +149,7 @@ export function Cta({
 }
 
 /** The floating navigation: section links with the current one marked, and a full-height menu on phones. */
-export function Nav({ links, cta, login }: { links: { href: string; label: string }[]; cta: { href: string; label: string }; login: string }) {
+export function Nav({ links, cta, login }: { links: { href: string; label: string }[]; cta: { href: string; label: string; short?: string }; login: string }) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   useEffect(() => {
@@ -174,10 +174,11 @@ export function Nav({ links, cta, login }: { links: { href: string; label: strin
       <nav aria-label="Разделы сайта" className="fixed inset-x-0 top-4 z-40 flex justify-center px-4">
         <div className="flex w-full max-w-6xl items-center justify-between gap-3 rounded-full bg-graphite/70 p-2 pl-4 ring-1 ring-white/[0.08] backdrop-blur-xl">
           <a href="#top" className="flex items-center gap-2 text-sm font-semibold tracking-tight text-white">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-flame text-graphite">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-ink-950">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4" /></svg>
             </span>
-            Stom AD Call Coach
+            <span className="sm:hidden">Stom AD CC</span>
+            <span className="hidden sm:inline">Stom AD Call Coach</span>
           </a>
           <div className="hidden items-center gap-1 lg:flex">
             {links.map((l) => (
@@ -195,11 +196,10 @@ export function Nav({ links, cta, login }: { links: { href: string; label: strin
             <a href={login} className="hidden rounded-full px-3 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/15 transition duration-300 hover:bg-white/[0.06] sm:inline-flex">
               Войти
             </a>
-            <span className="hidden sm:inline-flex">
-              <Cta href={cta.href} place="nav" event="hero_cta_click" size="sm">
-                {cta.label}
-              </Cta>
-            </span>
+            <Cta href={cta.href} place="nav" event="hero_cta_click" size="sm">
+              <span className="sm:hidden">{cta.short ?? cta.label}</span>
+              <span className="hidden sm:inline">{cta.label}</span>
+            </Cta>
             <button
               type="button"
               aria-label={open ? "Закрыть меню" : "Открыть меню"}
@@ -228,7 +228,7 @@ export function Nav({ links, cta, login }: { links: { href: string; label: strin
             }}
             {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}
             style={{ transitionDelay: open ? `${Math.min(i * 60, 400)}ms` : "0ms" }}
-            className={`border-b border-white/[0.06] py-4 text-2xl font-semibold tracking-tight transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"} ${i === links.length + 1 ? "text-flame" : "text-white"}`}
+            className={`border-b border-white/[0.06] py-4 text-2xl font-semibold tracking-tight transition duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${open ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"} ${i === links.length + 1 ? "text-accent" : "text-white"}`}
           >
             {l.label}
           </a>
