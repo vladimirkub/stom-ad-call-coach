@@ -4,6 +4,9 @@ import { firstLine, scenarioIds, scenarioVars } from "@/lib/scenarios";
 import { agentIdFor, conversationTokenFor } from "@/lib/agents";
 import { currentClinicContext } from "@/lib/session";
 import { callDirection } from "@/lib/direction";
+import { clientIp, currentUser } from "@/lib/session";
+import { alertDoubleCall } from "@/lib/alerts";
+import { busyMessage, releaseCallLock, takeCallLock } from "@/lib/call-lock";
 
 export async function GET(req: Request) {
   const limited = rateLimit(req, "voice", 10);
@@ -17,14 +20,29 @@ export async function GET(req: Request) {
   if (!apiKey || !agentId) {
     return NextResponse.json({ error: "Голос для этого пациента не настроен. Запустите npm run create-agent или используйте текстовый режим." }, { status: 503 });
   }
+  // One voice call at a time per login (lib/call-lock.ts); the lock goes back if the call cannot start.
+  const user = await currentUser();
+  if (!user) return NextResponse.json({ error: "Войдите в систему" }, { status: 401 });
+  const ip = clientIp(req);
+  const lock = takeCallLock(user.id, Date.now(), ip);
+  if (!lock.ok) {
+    void alertDoubleCall(user.id, { ip, heldFromIp: lock.heldFromIp, heldSince: lock.heldSince });
+    return NextResponse.json({ error: busyMessage(lock.minutesLeft), busy: true }, { status: 409 });
+  }
   try {
     const res = await fetch(
       `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
       { headers: { "xi-api-key": apiKey }, cache: "no-store" },
     );
-    if (!res.ok) return NextResponse.json({ error: `ElevenLabs вернул ошибку ${res.status}` }, { status: 502 });
+    if (!res.ok) {
+      releaseCallLock(user.id, lock.token);
+      return NextResponse.json({ error: `ElevenLabs вернул ошибку ${res.status}` }, { status: 502 });
+    }
     const body = (await res.json()) as { signed_url?: string };
-    if (!body.signed_url) return NextResponse.json({ error: "ElevenLabs не вернул signed URL" }, { status: 502 });
+    if (!body.signed_url) {
+      releaseCallLock(user.id, lock.token);
+      return NextResponse.json({ error: "ElevenLabs не вернул signed URL" }, { status: 502 });
+    }
     // The agent prompt keeps {{situation}}, {{concerns}}, {{site_facts}} and {{call_direction}} open; the call fills them
     // for this clinic and direction. On an inbound call the first line is empty: the patient waits for the administrator.
     const ctx = await currentClinicContext();
@@ -32,8 +50,9 @@ export async function GET(req: Request) {
       ...scenarioVars(ctx, scenario, direction, q.get("variant")),
       first_line: direction === "inbound" ? "" : firstLine(ctx, scenario, q.get("variant") ?? undefined),
     };
-    return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId), dynamicVariables });
+    return NextResponse.json({ signedUrl: body.signed_url, conversationToken: await conversationTokenFor(agentId), dynamicVariables, lockToken: lock.token });
   } catch {
+    releaseCallLock(user.id, lock.token);
     return NextResponse.json({ error: "Не удалось связаться с ElevenLabs" }, { status: 502 });
   }
 }

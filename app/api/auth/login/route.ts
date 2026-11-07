@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { login } from "@/lib/auth";
+import { login, sessionUser } from "@/lib/auth";
+import { alertManyAddresses, alertPasswordGuessing } from "@/lib/alerts";
 import { clearLoginFailures, clientIp, loginLocked, recordLoginFailure, setSessionCookie } from "@/lib/session";
 
 export async function POST(req: Request) {
@@ -12,13 +13,15 @@ export async function POST(req: Request) {
   const password = String(body?.password ?? "").slice(0, 200);
   if (!name || !password) return NextResponse.json({ error: "Введите логин и пароль" }, { status: 400 });
 
-  const r = login(name, password);
+  const r = login(name, password, ip);
   if (!r.ok) {
     if (r.reason === "disabled") return NextResponse.json({ error: "Доступ закрыт. Обратитесь в Stom AD." }, { status: 403 });
-    recordLoginFailure(ip);
+    if (recordLoginFailure(ip)) void alertPasswordGuessing(name, ip);
     return NextResponse.json({ error: "Неверный логин или пароль" }, { status: 401 });
   }
   clearLoginFailures(ip);
+  const user = sessionUser(r.token);
+  if (user) void alertManyAddresses(user.id);
   await setSessionCookie(r.token);
   return NextResponse.json({ ok: true });
 }

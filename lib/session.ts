@@ -53,14 +53,15 @@ export function loginLocked(ip: string): number {
   return f && f.lockedUntil > Date.now() ? Math.ceil((f.lockedUntil - Date.now()) / 60_000) : 0;
 }
 
-export function recordLoginFailure(ip: string) {
+/** Counts a wrong password; returns true when this one locks the address (for the owner's alert). */
+export function recordLoginFailure(ip: string): boolean {
   const f = fails.get(ip) ?? { count: 0, lockedUntil: 0 };
   f.count += 1;
-  if (f.count >= FAIL_LIMIT) {
-    f.lockedUntil = Date.now() + LOCK_MS;
-    f.count = 0;
-  }
   fails.set(ip, f);
+  if (f.count < FAIL_LIMIT) return false;
+  f.lockedUntil = Date.now() + LOCK_MS;
+  f.count = 0;
+  return true;
 }
 
 export function clearLoginFailures(ip: string) {

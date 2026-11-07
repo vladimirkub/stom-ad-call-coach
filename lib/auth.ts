@@ -164,7 +164,7 @@ export function setActive(userId: number, active: boolean) {
 
 export type LoginResult = { ok: true; token: string } | { ok: false; reason: "invalid" | "disabled" };
 
-export function login(loginName: string, password: string): LoginResult {
+export function login(loginName: string, password: string, ip = ""): LoginResult {
   const u = db()
     .prepare("SELECT u.id, u.pass_hash, u.active, c.access_until FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.login = ?")
     .get(loginName.trim().toLowerCase()) as { id: number; pass_hash: string; active: number; access_until: number | null } | undefined;
@@ -172,13 +172,13 @@ export function login(loginName: string, password: string): LoginResult {
   if (!u) return verifyPassword(password, "scrypt$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), { ok: false, reason: "invalid" };
   if (!verifyPassword(password, u.pass_hash)) return { ok: false, reason: "invalid" };
   if (!u.active || (u.access_until != null && u.access_until <= Date.now())) return { ok: false, reason: "disabled" };
-  return { ok: true, token: createSession(u.id) };
+  return { ok: true, token: createSession(u.id, ip) };
 }
 
-export function createSession(userId: number): string {
+export function createSession(userId: number, ip = ""): string {
   const token = randomBytes(32).toString("base64url");
   const now = Date.now();
-  db().prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)").run(sha256(token), userId, now, now + SESSION_DAYS * 864e5);
+  db().prepare("INSERT INTO sessions (token_hash, user_id, created_at, expires_at, ip) VALUES (?, ?, ?, ?, ?)").run(sha256(token), userId, now, now + SESSION_DAYS * 864e5, ip.slice(0, 64));
   return token;
 }
 

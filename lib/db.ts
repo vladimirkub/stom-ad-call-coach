@@ -184,6 +184,13 @@ export function db(): DatabaseSync {
     )`);
     conn.exec("CREATE INDEX IF NOT EXISTS leads_chat ON leads(chat_id, status)");
     conn.exec("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    // One voice call at a time per login (lib/call-lock.ts): the lock of the call in progress, until it ends or expires.
+    conn.exec("CREATE TABLE IF NOT EXISTS call_locks (user_id INTEGER PRIMARY KEY REFERENCES users(id), token TEXT NOT NULL, started_at INTEGER NOT NULL, expires_at INTEGER NOT NULL)");
+    const lockCols = conn.prepare("PRAGMA table_info(call_locks)").all() as { name: string }[];
+    if (!lockCols.some((c) => c.name === "ip")) conn.exec("ALTER TABLE call_locks ADD COLUMN ip TEXT NOT NULL DEFAULT ''");
+    // Where each sign-in came from, for the owner's alerts about shared logins (lib/alerts.ts).
+    const sessionCols = conn.prepare("PRAGMA table_info(sessions)").all() as { name: string }[];
+    if (!sessionCols.some((c) => c.name === "ip")) conn.exec("ALTER TABLE sessions ADD COLUMN ip TEXT NOT NULL DEFAULT ''");
     g.__coachDb = conn;
   }
   return g.__coachDb;

@@ -101,6 +101,24 @@ function Call({ id }: { id: string }) {
     }
   }
 
+  // The login's call lock (lib/call-lock.ts): given back as soon as the voice call ends or the page closes.
+  const callLock = useRef<string | null>(null);
+  const releaseLock = () => {
+    const token = callLock.current;
+    if (!token) return;
+    callLock.current = null;
+    const body = JSON.stringify({ token });
+    if (!navigator.sendBeacon?.("/api/call-lock", body)) void fetch("/api/call-lock", { method: "POST", body, keepalive: true }).catch(() => undefined);
+  };
+  useEffect(() => {
+    window.addEventListener("pagehide", releaseLock);
+    return () => {
+      window.removeEventListener("pagehide", releaseLock);
+      releaseLock();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const conversation = useConversation({
     onConnect: ({ conversationId }) => {
       voiceCall.current = { id: conversationId, messages: 0 };
@@ -114,6 +132,7 @@ function Call({ id }: { id: string }) {
     },
     onError: (message) => setError(`Ошибка голоса: ${message}`),
     onDisconnect: (details) => {
+      releaseLock();
       setEndedAt((t) => t ?? Date.now());
       if (details.reason === "error") setError(`Голосовое соединение потеряно: ${details.message}`);
       // The patient can end the call herself (end_call tool) when the operator loses her trust.
@@ -143,10 +162,12 @@ function Call({ id }: { id: string }) {
       const res = await fetch(`/api/signed-url?scenario=${id}&direction=${dir}${variant ? `&variant=${variant}` : ""}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Не удалось начать голосовую сессию");
+      callLock.current = body.lockToken ?? null;
       await startSessionFast(conversation, body);
       beginAttempt();
       setMode("voice");
     } catch (e) {
+      releaseLock();
       setError(e instanceof Error ? e.message : "Не удалось запустить голос");
     } finally {
       setBusy(false);
